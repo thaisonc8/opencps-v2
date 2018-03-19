@@ -30,16 +30,17 @@ import org.opencps.api.error.model.ErrorMsg;
 import org.opencps.usermgt.action.EmployeeInterface;
 import org.opencps.usermgt.action.impl.EmployeeActions;
 import org.opencps.usermgt.constants.EmployeeJobPosTerm;
+import org.opencps.usermgt.constants.EmployeeTerm;
 import org.opencps.usermgt.exception.DuplicateEmployeeEmailException;
 import org.opencps.usermgt.exception.DuplicateEmployeeNoException;
 import org.opencps.usermgt.model.Employee;
 import org.opencps.usermgt.model.EmployeeJobPos;
-import org.opencps.usermgt.service.EmployeeJobPosLocalServiceUtil;
 import org.opencps.usermgt.service.EmployeeLocalServiceUtil;
 import org.opencps.usermgt.utils.DateTimeUtils;
 
 import com.liferay.asset.kernel.exception.DuplicateCategoryException;
 import com.liferay.portal.kernel.exception.NoSuchUserException;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
@@ -50,9 +51,11 @@ import com.liferay.portal.kernel.search.Document;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.search.SortFactoryUtil;
 import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.service.UserLocalServiceUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.kernel.workflow.WorkflowConstants;
 
 import backend.auth.api.exception.UnauthenticationException;
 import backend.auth.api.exception.UnauthorizationException;
@@ -82,7 +85,21 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			params.put("groupId", String.valueOf(groupId));
 			params.put("keywords", query.getKeywords());
+			params.put(EmployeeTerm.WORKING_UNIT_ID, query.getWorkingunit());
+			params.put(EmployeeTerm.JOB_POS_ID, query.getJobpos());
+			params.put(EmployeeTerm.WORKING_STATUS, query.getStatus());
 
+			if(Validator.isNotNull(query.getActive())){
+				params.put(EmployeeTerm.ACTIVE,
+						query.getActive().equals(Boolean.TRUE.toString())
+								? String.valueOf(WorkflowConstants.STATUS_APPROVED)
+								: String.valueOf(WorkflowConstants.STATUS_DENIED));
+			}
+			
+			params.put(EmployeeTerm.MONTH, query.getMonth());
+
+			_log.info("EmployeeManagementImpl.getEmployees()"+params);
+			
 			Sort[] sorts = new Sort[] { SortFactoryUtil.create(query.getSort() + "_sortable", Sort.STRING_TYPE,
 					Boolean.getBoolean(query.getOrder())) };
 
@@ -95,7 +112,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 			return Response.status(200).entity(result).build();
 
 		} catch (Exception e) {
-			_log.error("/ @GET: " + e);
+			_log.error(e);
 			ErrorMsg error = new ErrorMsg();
 
 			error.setMessage("not found!");
@@ -141,20 +158,23 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 			long groupId = GetterUtil.getLong(header.getHeaderString("groupId"));
 
 			Date birthDate = DateTimeUtils.convertStringToDateAPI(input.getBirthdate());
+			Date recruitDate = DateTimeUtils.convertStringToDateAPI(input.getRecruitDate());
+			Date leaveDate = DateTimeUtils.convertStringToDateAPI(input.getLeaveDate());
 
 			Employee employee = actions.create(user.getUserId(), company.getCompanyId(), groupId, input.getEmployeeNo(),
 					input.getFullName(), input.getEmail(), input.getGender(), birthDate, input.getTelNo(),
-					input.getMobile(), input.getTitle(), input.getWorkingStatus(), serviceContext);
+					input.getMobile(), input.getTitle(), input.getWorkingStatus(), recruitDate, leaveDate,
+					serviceContext);
 
 			employeeModel = EmployeeUtils.mapperEmployeeModel(employee);
 
 			return Response.status(200).entity(employeeModel).build();
 
 		} catch (Exception e) {
-			_log.error("@POST: " + e);
+			_log.error(e);
 			if (e instanceof UnauthenticationException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("authentication failed!");
@@ -167,7 +187,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			if (e instanceof UnauthorizationException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("permission denied!");
@@ -180,7 +200,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			if (e instanceof NoSuchUserException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("conflict! User");
@@ -193,7 +213,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			if (e instanceof DuplicateEmployeeNoException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("duplicate-employee-no");
@@ -203,10 +223,10 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 				return Response.status(409).entity(error).build();
 
 			}
-			
+
 			if (e instanceof DuplicateEmployeeEmailException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("duplicate-employee-email");
@@ -216,7 +236,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 				return Response.status(409).entity(error).build();
 
 			}
-			
+
 			return Response.status(500).build();
 		}
 	}
@@ -232,20 +252,23 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 			long groupId = GetterUtil.getLong(header.getHeaderString("groupId"));
 
 			Date birthDate = DateTimeUtils.convertStringToDateAPI(input.getBirthdate());
+			Date recruitDate = DateTimeUtils.convertStringToDateAPI(input.getRecruitDate());
+			Date leaveDate = DateTimeUtils.convertStringToDateAPI(input.getLeaveDate());
 
 			Employee employee = actions.update(user.getUserId(), company.getCompanyId(), groupId, id,
 					input.getEmployeeNo(), input.getFullName(), input.getEmail(), input.getGender(), birthDate,
-					input.getTelNo(), input.getMobile(), input.getTitle(), input.getWorkingStatus(), serviceContext);
+					input.getTelNo(), input.getMobile(), input.getTitle(), input.getWorkingStatus(), recruitDate,
+					leaveDate, serviceContext);
 
 			employeeModel = EmployeeUtils.mapperEmployeeModel(employee);
 
 			return Response.status(200).entity(employeeModel).build();
 
 		} catch (Exception e) {
-			_log.error("@POST: " + e);
+			_log.error(e);
 			if (e instanceof UnauthenticationException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("authentication failed!");
@@ -258,7 +281,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			if (e instanceof UnauthorizationException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("permission denied!");
@@ -271,7 +294,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			if (e instanceof NoSuchUserException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("conflict!");
@@ -281,10 +304,10 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 				return Response.status(409).entity(error).build();
 
 			}
-			
+
 			if (e instanceof DuplicateEmployeeNoException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("duplicate employeeNo");
@@ -294,10 +317,10 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 				return Response.status(409).entity(error).build();
 
 			}
-			
+
 			if (e instanceof DuplicateEmployeeEmailException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("duplicate employee email");
@@ -376,18 +399,26 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 			File file = actions.getEmployeePhoto(id, serviceContext);
 
 			FileEntry fileEntry = actions.getFileEntry(id, serviceContext);
+			
+			if(file != null && fileEntry != null){
+				String fileName = fileEntry.getFileName();
 
-			String fileName = Validator.isNotNull(fileEntry) ? fileEntry.getFileName() : StringPool.BLANK;
+				ResponseBuilder responseBuilder = Response.ok((Object) file);
 
-			ResponseBuilder responseBuilder = Response.ok((Object) file);
+				responseBuilder.header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
+						.header("Content-Type", fileEntry.getMimeType());
 
-			responseBuilder.header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
-					.header("Content-Type", fileEntry.getMimeType());
-
-			return responseBuilder.build();
+				return responseBuilder.build();
+			}else{
+				ErrorMsg error = new ErrorMsg();
+				error.setMessage("file not found!");
+				error.setCode(404);
+				error.setDescription("file not found!");
+				return Response.status(404).entity(error).build();
+			}
 
 		} catch (Exception e) {
-			_log.error(e);
+			_log.error("Can not get employee photo employeeId = " + id + " " + e);
 
 			ErrorMsg error = new ErrorMsg();
 			error.setMessage("file not found!");
@@ -490,15 +521,16 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 			params.put("groupId", String.valueOf(groupId));
 			params.put("keywords", query.getKeywords());
 			params.put(EmployeeJobPosTerm.EMPLOYEE_ID, String.valueOf(id));
-			
+
 			Sort[] sorts = new Sort[] { SortFactoryUtil.create(query.getSort() + "_sortable", Sort.STRING_TYPE,
 					Boolean.getBoolean(query.getOrder())) };
 
-			JSONObject jsonData = actions.getEmployeeJobpos(user.getUserId(), company.getCompanyId(), groupId, params, sorts,
-					query.getStart(), query.getEnd(), serviceContext);
+			JSONObject jsonData = actions.getEmployeeJobpos(user.getUserId(), company.getCompanyId(), groupId, params,
+					sorts, query.getStart(), query.getEnd(), serviceContext);
 
 			result.setTotal(jsonData.getLong("total"));
-			result.getEmployeeJobposModel().addAll(EmployeeUtils.mapperEmployeeJobposList((List<Document>) jsonData.get("data"), id));
+			result.getEmployeeJobposModel()
+					.addAll(EmployeeUtils.mapperEmployeeJobposList((List<Document>) jsonData.get("data"), id));
 
 			return Response.status(200).entity(result).build();
 
@@ -524,18 +556,19 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			long groupId = GetterUtil.getLong(header.getHeaderString("groupId"));
 
-			EmployeeJobPos employeeJobPos = actions.createEmployeeJobpos(user.getUserId(), company.getCompanyId(), groupId, id,
-					input.getWorkingUnitId(), input.getJobPosId(), Boolean.valueOf(input.getMainJobPos()), serviceContext);
+			EmployeeJobPos employeeJobPos = actions.createEmployeeJobpos(user.getUserId(), company.getCompanyId(),
+					groupId, id, input.getWorkingUnitId(), input.getJobPosId(), Boolean.valueOf(input.getMainJobPos()),
+					serviceContext);
 
 			employeeJobposModel = EmployeeUtils.mapperEmployeeJobposModel(employeeJobPos);
 
 			return Response.status(200).entity(employeeJobposModel).build();
 
 		} catch (Exception e) {
-			_log.error("@POST: " + e);
+			_log.error(e);
 			if (e instanceof UnauthenticationException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("authentication failed!");
@@ -548,7 +581,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			if (e instanceof UnauthorizationException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("permission denied!");
@@ -561,7 +594,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			if (e instanceof NoSuchUserException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("conflict!");
@@ -574,7 +607,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			if (e instanceof DuplicateCategoryException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("conflict!");
@@ -584,7 +617,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 				return Response.status(409).entity(error).build();
 
 			}
-			
+
 			return Response.status(500).build();
 		}
 	}
@@ -599,18 +632,19 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			long groupId = GetterUtil.getLong(header.getHeaderString("groupId"));
 
-			EmployeeJobPos employeeJobPos = actions.updateEmployeeJobpos(user.getUserId(), company.getCompanyId(), groupId, id, employeeJobPosId,
-					input.getWorkingUnitId(), input.getJobPosId(), Boolean.valueOf(input.getMainJobPos()), serviceContext);
+			EmployeeJobPos employeeJobPos = actions.updateEmployeeJobpos(user.getUserId(), company.getCompanyId(),
+					groupId, id, employeeJobPosId, input.getWorkingUnitId(), input.getJobPosId(),
+					Boolean.valueOf(input.getMainJobPos()), serviceContext);
 
 			employeeJobposModel = EmployeeUtils.mapperEmployeeJobposModel(employeeJobPos);
 
 			return Response.status(200).entity(employeeJobposModel).build();
 
 		} catch (Exception e) {
-			_log.error("@POST: " + e);
+			_log.error(e);
 			if (e instanceof UnauthenticationException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("authentication failed!");
@@ -623,7 +657,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			if (e instanceof UnauthorizationException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("permission denied!");
@@ -636,7 +670,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			if (e instanceof NoSuchUserException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("conflict!");
@@ -654,8 +688,10 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 	@Override
 	public Response deleteEmployeeJobpos(HttpServletRequest request, HttpHeaders header, Company company, Locale locale,
 			User user, ServiceContext serviceContext, long id, long employeeJobPosId) {
+		EmployeeInterface actions = new EmployeeActions();
+
 		try {
-			EmployeeJobPosLocalServiceUtil.deleteEmployeeJobPos(employeeJobPosId, serviceContext);
+			actions.deleteEmployeeJobPos(id, employeeJobPosId, serviceContext);
 
 			return Response.status(200).build();
 
@@ -714,27 +750,27 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			long groupId = GetterUtil.getLong(header.getHeaderString("groupId"));
 
-			JSONObject jsonObject = actions.createEmployeeAccount(user.getUserId(), company.getCompanyId(), groupId, id, input.getScreenName(),
-					input.getEmail(), input.isExist(), serviceContext);
+			JSONObject jsonObject = actions.createEmployeeAccount(user.getUserId(), company.getCompanyId(), groupId, id,
+					input.getScreenName(), input.getEmail(), input.isExist(), serviceContext);
 
 			employeeAccountModel = EmployeeUtils.mapperEmployeeAccountModel(jsonObject);
 
-			if(Validator.isNotNull(jsonObject.getString("duplicate")) && jsonObject.getString("duplicate").equals(Boolean.TRUE.toString())){
-				
+			if (Validator.isNotNull(jsonObject.getString("duplicate"))
+					&& jsonObject.getString("duplicate").equals(Boolean.TRUE.toString())) {
+
 				return Response.status(409).entity(employeeAccountModel).build();
-				
+
 			} else {
-				
+
 				return Response.status(200).entity(employeeAccountModel).build();
-				
+
 			}
-			
 
 		} catch (Exception e) {
-			_log.error("@POST: " + e);
+			_log.error(e);
 			if (e instanceof UnauthenticationException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("authentication failed!");
@@ -747,7 +783,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			if (e instanceof UnauthorizationException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("permission denied!");
@@ -760,7 +796,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			if (e instanceof NoSuchUserException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("conflict!");
@@ -773,7 +809,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			if (e instanceof DuplicateCategoryException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("account already exits!");
@@ -783,7 +819,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 				return Response.status(200).entity(error).build();
 
 			}
-			
+
 			return Response.status(500).build();
 		}
 	}
@@ -798,17 +834,18 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			long groupId = GetterUtil.getLong(header.getHeaderString("groupId"));
 
-			JSONObject jsonObject = actions.lockEmployeeAccount(user.getUserId(), company.getCompanyId(), groupId, id, locked, serviceContext);
+			JSONObject jsonObject = actions.lockEmployeeAccount(user.getUserId(), company.getCompanyId(), groupId, id,
+					locked, serviceContext);
 
 			employeeAccountModel = EmployeeUtils.mapperEmployeeAccountModel(jsonObject);
 
 			return Response.status(200).entity(employeeAccountModel).build();
 
 		} catch (Exception e) {
-			_log.error("@POST: " + e);
+			_log.error(e);
 			if (e instanceof UnauthenticationException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("authentication failed!");
@@ -821,7 +858,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			if (e instanceof UnauthorizationException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("permission denied!");
@@ -834,7 +871,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			if (e instanceof NoSuchUserException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("conflict!");
@@ -866,7 +903,7 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 
 			if (e instanceof DuplicateCategoryException) {
 
-				_log.error("@POST: " + e);
+				_log.error(e);
 				ErrorMsg error = new ErrorMsg();
 
 				error.setMessage("conflict!");
@@ -881,4 +918,67 @@ public class EmployeeManagementImpl implements EmployeeManagement {
 		}
 	}
 
+	@Override
+	public Response getEmployeesByRole(HttpServletRequest request, HttpHeaders header, Company company, Locale locale,
+			User user, ServiceContext serviceContext, long roleId, DataSearchModel query) {
+			EmployeeInterface actions = new EmployeeActions();
+			EmployeeResults result = new EmployeeResults();
+			try {
+
+				long groupId = GetterUtil.getLong(header.getHeaderString("groupId"));
+				
+				List<User> users = UserLocalServiceUtil.getRoleUsers(roleId);
+				StringBuilder strUserIdList = new StringBuilder();
+				if (users != null && users.size() > 0) {
+					int length = users.size();
+					for (int i = 0; i < length; i++) {
+						User userDetail = users.get(i);
+						long userId = userDetail.getUserId();
+						if (Validator.isNotNull(userId) && userId > 0) {
+							if (i == length - 1) {
+								strUserIdList.append(userId);
+							} else {
+								strUserIdList.append(userId);
+								strUserIdList.append(StringPool.COMMA);
+							}
+						}
+					}
+				}
+
+				if (query.getEnd() == 0) {
+
+					query.setStart(-1);
+
+					query.setEnd(-1);
+
+				}
+
+				LinkedHashMap<String, Object> params = new LinkedHashMap<String, Object>();
+
+				params.put("groupId", String.valueOf(groupId));
+				params.put("keywords", query.getKeywords());
+				params.put("userIdList", strUserIdList.toString());
+
+				Sort[] sorts = new Sort[] { SortFactoryUtil.create(query.getSort() + "_sortable", Sort.STRING_TYPE,
+						Boolean.getBoolean(query.getOrder())) };
+
+				JSONObject jsonData = actions.getEmployees(user.getUserId(), company.getCompanyId(), groupId, params, sorts,
+						query.getStart(), query.getEnd(), serviceContext);
+
+				result.setTotal(jsonData.getLong("total"));
+				result.getEmployeeModel().addAll(EmployeeUtils.mapperEmployeeList((List<Document>) jsonData.get("data")));
+
+				return Response.status(200).entity(result).build();
+
+		} catch (Exception e) {
+			_log.error(e);
+			ErrorMsg error = new ErrorMsg();
+
+			error.setMessage("not found!");
+			error.setCode(404);
+			error.setDescription("not found!");
+
+			return Response.status(404).entity(error).build();
+		}
+	}
 }

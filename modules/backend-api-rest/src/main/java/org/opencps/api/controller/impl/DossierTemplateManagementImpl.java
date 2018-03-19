@@ -322,15 +322,24 @@ public class DossierTemplateManagementImpl implements DossierTemplateManagement 
 			if (id != 0) {
 				DossierTemplate dossierTemplate = DossierTemplateLocalServiceUtil.fetchDossierTemplate(id);
 
-				if (Validator.isNotNull(dossierTemplate))
+				if (Validator.isNotNull(dossierTemplate)) {
 					templateNo = dossierTemplate.getTemplateNo();
+				} else {
+					throw new Exception("No DossierTemplate was found");
+				}
+			} else {
+				templateNo = StringPool.BLANK;
 			}
-
+			
 			String partType = query.getPartType();
 			String multiple = query.getMultiple();
 			String required = query.getRequired();
 			String eSign = query.getESign();
 
+			
+			params.put(DossierPartTerm.TEMPLATE_ID, id);
+			
+			
 			if (Validator.isNotNull(templateNo)) {
 				params.put(DossierPartTerm.TEMPLATE_NO, templateNo);
 			}
@@ -340,11 +349,11 @@ public class DossierTemplateManagementImpl implements DossierTemplateManagement 
 			}
 
 			if (Validator.isNotNull(eSign)) {
-				params.put(DossierPartTerm.TEMPLATE_NO, templateNo);
+				params.put(DossierPartTerm.ESIGN, eSign);
 			}
 
 			if (Validator.isNotNull(multiple)) {
-				params.put(DossierPartTerm.ESIGN, eSign);
+				params.put(DossierPartTerm.ESIGN, multiple);
 			}
 
 			if (Validator.isNotNull(required)) {
@@ -397,12 +406,20 @@ public class DossierTemplateManagementImpl implements DossierTemplateManagement 
 
 			DossierPartInputModel result = new DossierPartInputModel();
 
-			DossierPart dossierPart = actions.updateDossierPart(groupId, 0l, dossierTemplate.getTemplateNo(),
+/*			DossierPart dossierPart = actions.updateDossierPart(groupId, 0l, dossierTemplate.getTemplateNo(),
 					query.getPartNo(), query.getPartName(), query.getPartTip(), query.getPartType(),
 					GetterUtil.getBoolean(query.getMultiple()), StringPool.BLANK, StringPool.BLANK, StringPool.BLANK,
 					GetterUtil.getBoolean(query.getRequired()), query.getFileTemplateNo(),
 					GetterUtil.getBoolean(query.getEsign()), serviceContext);
-
+*/
+			
+			DossierPart dossierPart = actions.updateDossierPart(groupId, 0l,
+					dossierTemplate.getTemplateNo(), query.getPartNo(), query.getPartName(), query.getPartTip(),
+					query.getPartType(), GetterUtil.getBoolean(query.getMultiple()), StringPool.BLANK, StringPool.BLANK,
+					StringPool.BLANK, GetterUtil.getBoolean(query.getRequired()), query.getFileTemplateNo(),
+					GetterUtil.getBoolean(query.getEsign()), query.getTypeCode(), query.getDeliverableAction(),
+					serviceContext);
+			
 			result = DossierTemplateUtils.mappingForPartPOST(dossierPart);
 
 			return Response.status(200).entity(result).build();
@@ -461,11 +478,18 @@ public class DossierTemplateManagementImpl implements DossierTemplateManagement 
 			DossierPart partUpdate = DossierPartLocalServiceUtil.fetchByTemplatePartNo(groupId,
 					dossierTemplate.getTemplateNo(), partNo);
 
-			DossierPart dossierPart = actions.updateDossierPart(groupId, partUpdate.getPrimaryKey(),
+/*			DossierPart dossierPart = actions.updateDossierPart(groupId, partUpdate.getPrimaryKey(),
 					dossierTemplate.getTemplateNo(), query.getPartNo(), query.getPartName(), query.getPartTip(),
 					query.getPartType(), GetterUtil.getBoolean(query.getMultiple()), StringPool.BLANK, StringPool.BLANK,
 					StringPool.BLANK, GetterUtil.getBoolean(query.getRequired()), query.getFileTemplateNo(),
 					GetterUtil.getBoolean(query.getEsign()), serviceContext);
+*/			
+			DossierPart dossierPart = actions.updateDossierPart(groupId, partUpdate.getPrimaryKey(),
+					dossierTemplate.getTemplateNo(), query.getPartNo(), query.getPartName(), query.getPartTip(),
+					query.getPartType(), GetterUtil.getBoolean(query.getMultiple()), StringPool.BLANK, StringPool.BLANK,
+					StringPool.BLANK, GetterUtil.getBoolean(query.getRequired()), query.getFileTemplateNo(),
+					GetterUtil.getBoolean(query.getEsign()), query.getTypeCode(), query.getDeliverableAction(),
+					serviceContext);
 
 			result = DossierTemplateUtils.mappingForPartPOST(dossierPart);
 

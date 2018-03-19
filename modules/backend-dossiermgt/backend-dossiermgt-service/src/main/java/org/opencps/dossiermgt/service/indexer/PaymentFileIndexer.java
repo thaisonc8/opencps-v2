@@ -1,12 +1,20 @@
 package org.opencps.dossiermgt.service.indexer;
 
+import java.security.MessageDigest;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Locale;
 
 import javax.portlet.PortletRequest;
 import javax.portlet.PortletResponse;
 
+import org.opencps.dossiermgt.action.keypay.util.HashFunction;
+import org.opencps.dossiermgt.constants.DossierTerm;
 import org.opencps.dossiermgt.constants.PaymentFileTerm;
+import org.opencps.dossiermgt.model.Dossier;
 import org.opencps.dossiermgt.model.PaymentFile;
+import org.opencps.dossiermgt.service.DossierLocalServiceUtil;
 import org.opencps.dossiermgt.service.PaymentFileLocalServiceUtil;
 
 import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
@@ -21,6 +29,7 @@ import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.IndexWriterHelperUtil;
 import com.liferay.portal.kernel.search.Summary;
 import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.StringPool;
 
 public class PaymentFileIndexer extends BaseIndexer<PaymentFile> {
 	public static final String CLASS_NAME = PaymentFile.class.getName();
@@ -43,8 +52,8 @@ public class PaymentFileIndexer extends BaseIndexer<PaymentFile> {
 		// Indexer of audit fields
 		document.addNumberSortable(Field.COMPANY_ID, object.getCompanyId());
 		document.addNumberSortable(Field.GROUP_ID, object.getGroupId());
-		document.addDateSortable(Field.MODIFIED_DATE, object.getCreateDate());
-		document.addDateSortable(Field.CREATE_DATE, object.getModifiedDate());
+		document.addDateSortable(Field.MODIFIED_DATE, object.getModifiedDate());
+		document.addDateSortable(Field.CREATE_DATE, object.getCreateDate());
 		document.addNumberSortable(Field.USER_ID, object.getUserId());
 		document.addKeywordSortable(Field.USER_NAME, String.valueOf(object.getUserName()));
 		document.addKeywordSortable(Field.ENTRY_CLASS_NAME, CLASS_NAME);
@@ -78,6 +87,46 @@ public class PaymentFileIndexer extends BaseIndexer<PaymentFile> {
 		document.addTextSortable(PaymentFileTerm.INVOICE_TEMPLATE_NO, object.getInvoiceTemplateNo());
 		document.addTextSortable(PaymentFileTerm.INVOICE_ISSUE_NO, object.getInvoiceIssueNo());
 		document.addTextSortable(PaymentFileTerm.INVOICE_NO, object.getInvoiceNo());
+
+		// Add text fields of dossierId
+		try {
+			Dossier dossier = DossierLocalServiceUtil.getDossier(object.getDossierId());
+			document.addTextSortable(PaymentFileTerm.APPLICANT_NAME, dossier.getApplicantName());
+			document.addTextSortable(PaymentFileTerm.APPLICANT_ID_NO, dossier.getApplicantIdNo());
+			document.addTextSortable(PaymentFileTerm.SERVICE_CODE, dossier.getServiceCode());
+			document.addTextSortable(PaymentFileTerm.SERVICE_NAME, dossier.getServiceName());
+			document.addTextSortable(PaymentFileTerm.DOSSIER_NO, dossier.getDossierNo());
+			document.addNumberSortable(PaymentFileTerm.COUNTER, dossier.getCounter());
+			
+			//binhth index dossierId CTN
+			// TODO
+			
+			MessageDigest md5 = null;
+			
+			byte[] ba = null;
+
+			try {
+				
+				md5 = MessageDigest.getInstance("MD5");
+				
+				ba = md5.digest(dossier.getReferenceUid().getBytes("UTF-8"));
+				
+			} catch (Exception e) {
+			} 
+
+			DateFormat df = new SimpleDateFormat("yy");
+			
+			String formattedDate = df.format(Calendar.getInstance().getTime());
+			
+			String dossierIDCTN = StringPool.BLANK;
+			
+			dossierIDCTN = formattedDate + HashFunction.hexShort(ba);
+			
+			document.addTextSortable(DossierTerm.DOSSIER_ID+"CTN", dossierIDCTN);
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 
 		return document;
 	}

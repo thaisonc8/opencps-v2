@@ -14,12 +14,15 @@
 
 package org.opencps.dossiermgt.service.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
 import java.util.Date;
+import java.util.List;
 
 import org.opencps.dossiermgt.model.DossierSync;
 import org.opencps.dossiermgt.service.base.DossierSyncLocalServiceBaseImpl;
+
+import com.liferay.portal.kernel.util.Validator;
+
+import aQute.bnd.annotation.ProviderType;
 
 /**
  * The implementation of the dossier sync local service.
@@ -51,29 +54,87 @@ public class DossierSyncLocalServiceImpl extends DossierSyncLocalServiceBaseImpl
 
 	public DossierSync updateDossierSync(long groupId, long userId, long dossierId, String dossierReferenceUid,
 			boolean createDossier, int method, long classPK, String fileReferenceUid, String serverNo) {
-		
-		long dossierSyncId = counterLocalService.increment(DossierSync.class.getName());
-		
-		Date now = new Date();
-		
-		DossierSync dossierSync = dossierSyncPersistence.create(dossierSyncId);
-		
-		dossierSync.setCreateDate(now);
-		dossierSync.setModifiedDate(now);
-		
-		dossierSync.setGroupId(groupId);
-		dossierSync.setUserId(userId);
-		
-		dossierSync.setDossierId(dossierId);
-		dossierSync.setDossierReferenceUid(dossierReferenceUid);
-		dossierSync.setCreateDossier(createDossier);
-		dossierSync.setMethod(method);
-		dossierSync.setClassPK(classPK);
-		dossierSync.setFileReferenceUid(fileReferenceUid);
-		dossierSync.setServerNo(serverNo);
-		
-		dossierSyncPersistence.update(dossierSync);
-		
+
+		DossierSync dossierSync = null;
+
+		dossierSync = dossierSyncPersistence.fetchByF_D_M_CPK_FR(dossierId, method, classPK, fileReferenceUid);
+
+		if (Validator.isNull(dossierSync)) {
+			long dossierSyncId = counterLocalService.increment(DossierSync.class.getName());
+
+			Date now = new Date();
+
+			dossierSync = dossierSyncPersistence.create(dossierSyncId);
+
+			dossierSync.setCreateDate(now);
+			dossierSync.setModifiedDate(now);
+
+			dossierSync.setGroupId(groupId);
+			dossierSync.setUserId(userId);
+
+			dossierSync.setDossierId(dossierId);
+			dossierSync.setDossierReferenceUid(dossierReferenceUid);
+			dossierSync.setCreateDossier(createDossier);
+			dossierSync.setMethod(method);
+			dossierSync.setClassPK(classPK);
+			dossierSync.setFileReferenceUid(fileReferenceUid);
+			dossierSync.setServerNo(serverNo);
+
+			dossierSyncPersistence.update(dossierSync);
+
+		}
+
 		return dossierSync;
 	}
+
+	public DossierSync updateCreateDossierStatus(long dossierSyncId, boolean status) {
+
+		DossierSync dossierSyn = dossierSyncPersistence.fetchByPrimaryKey(dossierSyncId);
+		dossierSyn.setCreateDossier(status);
+
+		return dossierSyncPersistence.update(dossierSyn);
+	}
+
+	public DossierSync shiftCreateDossierStatus(long dossierSyncId) {
+		DossierSync dossierSyn = dossierSyncPersistence.fetchByPrimaryKey(dossierSyncId);
+
+		boolean isCreate = dossierSyn.getCreateDossier();
+
+		if (isCreate) {
+			dossierSyn.setCreateDossier(false);
+		} else {
+			dossierSyn.setCreateDossier(true);
+		}
+
+		return dossierSyncPersistence.update(dossierSyn);
+	}
+
+	public List<DossierSync> fetchByServerNo(String serverNo, int start, int end) {
+		return dossierSyncPersistence.findBySRV_NO(serverNo, start, end);
+	}
+
+	public List<DossierSync> fetchByGroupId(long groupId, int start, int end) {
+		return dossierSyncPersistence.findByG_ID(groupId, start, end);
+	}
+
+	public List<DossierSync> fetchByGroupDossierId(long groupId, long dossierId, int start, int end) {
+		return dossierSyncPersistence.findByG_ID_DID(groupId, dossierId, start, end);
+	}
+
+	public List<DossierSync> fetchByGroupDossierRef(long groupId, String dossierRef, int start, int end) {
+		return dossierSyncPersistence.findByG_ID_DRF(groupId, dossierRef, start, end);
+	}
+
+	public int countByGroupDossierId(long groupId, long dossierId) {
+		return dossierSyncPersistence.countByG_ID_DID(groupId, dossierId);
+	}
+
+	public int countByGroupDossierRef(long groupId, String dossierRef) {
+		return dossierSyncPersistence.countByG_ID_DRF(groupId, dossierRef);
+	}
+
+	public int countByDossierId(long dossierId) {
+		return dossierSyncPersistence.countByDossierId(dossierId);
+	}
+
 }

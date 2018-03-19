@@ -1,12 +1,18 @@
 
 package org.opencps.frontend.web.admin.portlet;
 
+import java.io.Console;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.ResourceBundle;
 
 import javax.portlet.ActionRequest;
 import javax.portlet.ActionResponse;
 import javax.portlet.Portlet;
+import javax.portlet.PortletConfig;
 import javax.portlet.PortletException;
 import javax.portlet.PortletMode;
 import javax.portlet.PortletRequest;
@@ -15,15 +21,21 @@ import javax.portlet.RenderRequest;
 import javax.portlet.RenderResponse;
 import javax.portlet.WindowStateException;
 
-import org.opencps.auth.api.BackendAuthImpl;
 import org.opencps.auth.api.exception.UnauthenticationException;
 import org.opencps.auth.api.exception.UnauthorizationException;
+import org.opencps.communication.action.impl.NotificationTemplateActions;
+import org.opencps.communication.constants.NotificationMGTConstants;
+import org.opencps.communication.constants.NotificationTemplateTerm;
+import org.opencps.communication.model.Notificationtemplate;
+import org.opencps.datamgt.action.DictcollectionInterface;
 import org.opencps.datamgt.action.impl.DictCollectionActions;
+import org.opencps.datamgt.constants.DictGroupTerm;
+import org.opencps.datamgt.constants.DictItemGroupTerm;
 import org.opencps.datamgt.model.DictCollection;
 import org.opencps.datamgt.model.DictGroup;
 import org.opencps.datamgt.model.DictItem;
 import org.opencps.datamgt.service.DictGroupLocalServiceUtil;
-import org.opencps.datamgt.utils.DateTimeUtils;
+import org.opencps.datamgt.service.DictItemLocalServiceUtil;
 import org.opencps.dossiermgt.model.ServiceInfo;
 import org.opencps.dossiermgt.service.ServiceInfoLocalServiceUtil;
 import org.opencps.frontend.web.admin.constants.AdminPortletKeys;
@@ -31,33 +43,47 @@ import org.opencps.frontend.web.admin.constants.FrontendWebAdminPortletConstants
 import org.opencps.usermgt.action.impl.JobposActions;
 import org.opencps.usermgt.model.Applicant;
 import org.opencps.usermgt.model.Employee;
+import org.opencps.usermgt.model.EmployeeJobPos;
 import org.opencps.usermgt.model.JobPos;
 import org.opencps.usermgt.model.WorkingUnit;
 import org.opencps.usermgt.service.ApplicantLocalServiceUtil;
+import org.opencps.usermgt.service.EmployeeJobPosLocalServiceUtil;
 import org.opencps.usermgt.service.EmployeeLocalServiceUtil;
 import org.opencps.usermgt.service.JobPosLocalServiceUtil;
 import org.opencps.usermgt.service.WorkingUnitLocalServiceUtil;
+import org.opencps.usermgt.utils.DateTimeUtils;
 import org.osgi.service.component.annotations.Component;
 
 import com.liferay.asset.kernel.exception.DuplicateCategoryException;
+import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.NoSuchUserException;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.Role;
+import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.portlet.LiferayWindowState;
+import com.liferay.portal.kernel.portlet.PortletConfigFactoryUtil;
 import com.liferay.portal.kernel.portlet.PortletURLFactoryUtil;
+import com.liferay.portal.kernel.search.Document;
+import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.service.RoleLocalServiceUtil;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextFactory;
+import com.liferay.portal.kernel.service.UserLocalServiceUtil;
 import com.liferay.portal.kernel.theme.PortletDisplay;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
+import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.util.bridges.freemarker.FreeMarkerPortlet;
+
+import backend.auth.api.BackendAuthImpl;
+import backend.utils.ObjectConverterUtil;
 
 /**
  * @author huymq
@@ -66,6 +92,9 @@ import com.liferay.util.bridges.freemarker.FreeMarkerPortlet;
 	"com.liferay.portlet.display-category=category.opencps.admin",
 	"com.liferay.portlet.instanceable=true",
 	"javax.portlet.display-name=frontend-web-admin Portlet",
+	"com.liferay.portlet.header-portlet-javascript=/js/location.js",
+	"com.liferay.portlet.header-portlet-javascript=/js/main.js",
+	"com.liferay.portlet.footer-portlet-javascript=/js/dictcollection.js",
 	"javax.portlet.name=" + AdminPortletKeys.ADMIN_PORTLET,
 	"javax.portlet.init-param.template-path=/",
 	"javax.portlet.init-param.view-template=/templates/admin.ftl",
@@ -95,6 +124,14 @@ public class AdminPortlet extends FreeMarkerPortlet {
 		serviceInfoListURL.setWindowState(LiferayWindowState.EXCLUSIVE);
 		serviceInfoListURL.setParameter(
 			"mvcPath", "/templates/serviceinfo.ftl");
+		
+		PortletURL serverConfigsURL = PortletURLFactoryUtil.create(
+			renderRequest, portletId, themeDisplay.getPlid(),
+			PortletRequest.RENDER_PHASE);
+		serverConfigsURL.setPortletMode(PortletMode.VIEW);
+		serverConfigsURL.setWindowState(LiferayWindowState.EXCLUSIVE);
+		serverConfigsURL.setParameter(
+			"mvcPath", "/templates/serverconfigs.ftl");
 
 		PortletURL serviceInfoFormURL = PortletURLFactoryUtil.create(
 			renderRequest, portletId, themeDisplay.getPlid(),
@@ -223,7 +260,25 @@ public class AdminPortlet extends FreeMarkerPortlet {
 		dataMgtURL.setWindowState(LiferayWindowState.EXCLUSIVE);
 		dataMgtURL.setParameter(
 			"mvcPath", "/templates/datamgt/dictcollection_index.ftl");
-
+		
+		PortletURL registrationTemplatesURL = PortletURLFactoryUtil.create(
+			renderRequest, portletId, themeDisplay.getPlid(),
+			PortletRequest.RENDER_PHASE);
+		registrationTemplatesURL.setPortletMode(PortletMode.VIEW);
+		registrationTemplatesURL.setWindowState(LiferayWindowState.EXCLUSIVE);
+		registrationTemplatesURL.setParameter(
+			"mvcPath", "/templates/registrationtemplates.ftl");
+		
+		PortletURL certNumberURL = PortletURLFactoryUtil.create(
+			renderRequest, portletId, themeDisplay.getPlid(),
+			PortletRequest.RENDER_PHASE);
+		certNumberURL.setPortletMode(PortletMode.VIEW);
+		certNumberURL.setWindowState(LiferayWindowState.EXCLUSIVE);
+		certNumberURL.setParameter(
+			"mvcPath", "/templates/certNumber.ftl");
+		
+		
+		urlObject.put("registrationtemplates", registrationTemplatesURL.toString());
 		urlObject.put("serviceinfo_list", serviceInfoListURL.toString());
 		urlObject.put("serviceinfo_form", serviceInfoFormURL.toString());
 		urlObject.put(
@@ -249,7 +304,9 @@ public class AdminPortlet extends FreeMarkerPortlet {
 		urlObject.put("payment_config", paymentConfigtURL.toString());
 		urlObject.put("paymentconfig_form", paymentConfigFormURL.toString());
 		urlObject.put("dictcollection_index", dataMgtURL.toString());
-
+		urlObject.put("serverconfigs", serverConfigsURL.toString());
+		urlObject.put("certnumber", certNumberURL.toString());
+		
 		// set object edit
 		long serviceInfoId = ParamUtil.getLong(renderRequest, "serviceInfoId");
 		if (serviceInfoId > 0) {
@@ -285,17 +342,85 @@ public class AdminPortlet extends FreeMarkerPortlet {
 		renderRequest.setAttribute(
 			"applicantId", applicant == null ? "" : applicant.getApplicantId());
 
-		// code from mobilink
-		setRenderParams(renderRequest, renderResponse, themeDisplay);
+		// render from mobilink
+		renderFromMobilink(renderRequest, renderResponse);
 
 		super.render(renderRequest, renderResponse);
 
 	}
 
-	private void setRenderParams(
-		RenderRequest renderRequest, RenderResponse renderResponse,
-		ThemeDisplay themeDisplay)
-		throws WindowStateException {
+	private void renderFromMobilink(
+		RenderRequest renderRequest, RenderResponse renderResponse)
+		throws IOException, PortletException {
+
+		renderFrontendWebEmployeePortlet(renderRequest, renderResponse);
+		renderFrontendWebJobposPortlet(renderRequest, renderResponse);
+		renderFrontendWebAdminPortlet(renderRequest, renderResponse);
+		renderFrontendWebWorkingUnitPortlet(renderRequest, renderResponse);
+		renderFrontendWebNotificationPortlet(renderRequest, renderResponse);
+
+		renderRequest.setAttribute(
+			"url", generateURLCommon(renderRequest, renderResponse));
+
+		renderRequest.setAttribute("constants", generalConstantsCommon(renderRequest));
+
+		renderRequest.setAttribute("param", generalParamsCommon(renderRequest));
+	}
+	
+	private void renderFrontendWebNotificationPortlet(
+			RenderRequest renderRequest, RenderResponse renderResponse) {
+		
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay) renderRequest.getAttribute(WebKeys.THEME_DISPLAY);
+
+		ServiceContext serviceContext = null;
+		
+		try {
+			serviceContext = ServiceContextFactory.getInstance(renderRequest);
+		}
+		catch (Exception e) {
+			_log.error(e);
+			throw new NullPointerException();
+		}
+
+		long groupId = themeDisplay.getScopeGroupId();
+
+		long userId = themeDisplay.getUserId();
+
+		String notificationType =
+			ParamUtil.getString(renderRequest, "notificationType");
+
+		NotificationTemplateActions notificationTemplateActions =
+			new NotificationTemplateActions();
+
+		Notificationtemplate notificationTemplate = null;
+
+		if (Validator.isNotNull(notificationType)) {
+			try {
+
+				notificationTemplate = notificationTemplateActions.read(
+					userId, groupId, notificationType, serviceContext);
+				JSONObject object = ObjectConverterUtil.objectToJSON(
+					notificationTemplate.getClass(), notificationTemplate);
+				Map<String, String> initTemplates = NotificationMGTConstants.NOTIFICATION_TEMPLATE_INIT;
+				
+				object.put("typeName", initTemplates.get(notificationTemplate.getNotificationType()));
+				renderRequest.setAttribute("notificationTemplate", object);
+
+			}
+			catch (Exception e) {
+				_log.error(e);
+			}
+		}
+	}
+
+	public void renderFrontendWebWorkingUnitPortlet(
+		RenderRequest renderRequest, RenderResponse renderResponse)
+		throws IOException, PortletException {
+
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay) renderRequest.getAttribute(WebKeys.THEME_DISPLAY);
+
 		ServiceContext serviceContext = null;
 
 		try {
@@ -308,7 +433,64 @@ public class AdminPortlet extends FreeMarkerPortlet {
 
 		BackendAuthImpl backendAuthImpl = new BackendAuthImpl();
 
-		JSONObject params = JSONFactoryUtil.createJSONObject();
+		long groupId = themeDisplay.getScopeGroupId();
+
+		long userId = themeDisplay.getUserId();
+
+		boolean isOmniadmin =
+			backendAuthImpl.isAdmin(serviceContext, StringPool.BLANK);
+
+		long workingUnitId = ParamUtil.getLong(renderRequest, "workingUnitId");
+
+		WorkingUnit workingUnit = null;
+
+		if (workingUnitId > 0) {
+			try {
+				workingUnit =
+					WorkingUnitLocalServiceUtil.fetchWorkingUnit(workingUnitId);
+
+				JSONObject jsonWorkingUnit = JSONFactoryUtil.createJSONObject();
+
+				jsonWorkingUnit = ObjectConverterUtil.objectToJSON(
+					workingUnit.getClass(), workingUnit);
+
+				renderRequest.setAttribute("workingUnit", jsonWorkingUnit);
+			}
+			catch (Exception e) {
+				_log.error(e);
+			}
+		}
+
+		renderRequest.setAttribute("groupId", groupId);
+
+		renderRequest.setAttribute("userId", userId);
+
+		renderRequest.setAttribute("isOmniadmin", isOmniadmin);
+
+		renderRequest.setAttribute(
+			"portletNamespace",
+			themeDisplay.getPortletDisplay().getNamespace());
+
+	}
+
+	private void renderFrontendWebAdminPortlet(
+		RenderRequest renderRequest, RenderResponse renderResponse)
+		throws IOException, PortletException {
+
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay) renderRequest.getAttribute(WebKeys.THEME_DISPLAY);
+
+		ServiceContext serviceContext = null;
+
+		try {
+			serviceContext = ServiceContextFactory.getInstance(renderRequest);
+		}
+		catch (Exception e) {
+			_log.error(e);
+			throw new NullPointerException();
+		}
+
+		BackendAuthImpl backendAuthImpl = new BackendAuthImpl();
 
 		String type = ParamUtil.getString(renderRequest, "type");
 
@@ -316,8 +498,8 @@ public class AdminPortlet extends FreeMarkerPortlet {
 
 		long userId = themeDisplay.getUserId();
 
-		boolean isOmniadmin = true;
-		// backendAuthImpl.isAdmin(serviceContext, StringPool.BLANK);
+		boolean isOmniadmin =
+			backendAuthImpl.isAdmin(serviceContext, StringPool.BLANK);
 
 		if (type.equals(
 			FrontendWebAdminPortletConstants.AdminMenuItemType.ACTIVITY.toString()) ||
@@ -336,6 +518,8 @@ public class AdminPortlet extends FreeMarkerPortlet {
 
 			DictItem dictItem = null;
 
+			JSONObject dictItemJSON = null;
+
 			DictCollection dictCollection = null;
 
 			DictGroup dictGroup = null;
@@ -353,6 +537,28 @@ public class AdminPortlet extends FreeMarkerPortlet {
 
 					dictItem = collectionActions.getDictItemByItemCode(
 						collectionCode, itemCode, groupId, serviceContext);
+
+					dictItemJSON = ObjectConverterUtil.objectToJSON(
+						dictItem.getClass(), dictItem);
+
+					if (Validator.isNotNull(dictItem) &&
+						Validator.isNotNull(dictItemJSON)) {
+
+						dictItemJSON.put(
+							"groupCode", getListDictGroupByDictItem(
+								dictItem, serviceContext));
+
+						if (dictItem.getParentItemId() > 0) {
+
+							dictItem = DictItemLocalServiceUtil.fetchDictItem(
+								dictItem.getParentItemId());
+							dictItemJSON.put(
+								"parentItemCode", dictItem.getItemCode());
+
+						}
+
+					}
+
 				}
 
 				if (Validator.isNotNull(groupCode)) {
@@ -361,21 +567,22 @@ public class AdminPortlet extends FreeMarkerPortlet {
 							groupCode, groupId);
 				}
 
-				params.put("dictCollection_groupCode", groupCode);
+				if (Validator.isNotNull(dictItem)) {
 
-				params.put("activityType_itemCode", itemCode);
+					dictItem = collectionActions.getDictItemByItemCode(
+						collectionCode, dictItem.getItemCode(), groupId,
+						serviceContext);
 
-				params.put("documentType_itemCode", itemCode);
+				}
 
-				params.put("dictCollection_collectionCode", collectionCode);
+				renderRequest.setAttribute(
+					"activityType_dictItem", dictItemJSON);
 
-				params.put("dictCollection_itemCode", itemCode);
+				renderRequest.setAttribute(
+					"documentType_dictItem", dictItemJSON);
 
-				renderRequest.setAttribute("activityType_dictItem", dictItem);
-
-				renderRequest.setAttribute("documentType_dictItem", dictItem);
-
-				renderRequest.setAttribute("dictCollection_dictItem", dictItem);
+				renderRequest.setAttribute(
+					"dictCollection_dictItem", dictItemJSON);
 
 				renderRequest.setAttribute(
 					"dictCollection_dictGroup", dictGroup);
@@ -390,45 +597,9 @@ public class AdminPortlet extends FreeMarkerPortlet {
 			}
 		}
 		else if (type.equals(
-			FrontendWebAdminPortletConstants.AdminMenuItemType.LABEL.toString())) {
-			long labelId = ParamUtil.getLong(renderRequest, "labelId");
-
-			/* Label label = LabelLocalServiceUtil.fetchLabel(labelId); */
-
-			/*
-			 * renderRequest.setAttribute("label", label);
-			 * params.put("label_labelId", labelId);
-			 */
-		}
-		else if (type.equals(
-			FrontendWebAdminPortletConstants.AdminMenuItemType.LOCATION.toString())) {
-			long locationId = ParamUtil.getLong(renderRequest, "locationId");
-
-			/*
-			 * Location location =
-			 * LocationLocalServiceUtil.fetchLocation(locationId);
-			 */
-
-			/*
-			 * renderRequest.setAttribute("location", location); double[]
-			 * geolocation = new double[] { 0, 0 }; if (location != null &&
-			 * Validator.isNotNull(location.getGeolocation())) { geolocation =
-			 * StringUtil.split(location.getGeolocation(), 0.0); }
-			 */
-
-			params.put("location_locationId", locationId);
-
-			/*
-			 * params.put("locationLat", geolocation[0]);
-			 * params.put("locationLng", geolocation[1]);
-			 */
-
-		}
-		else if (type.equals(
 			FrontendWebAdminPortletConstants.AdminMenuItemType.NOTIFICATIONTEMPLATE.toString())) {
 			// Include portlet
 		}
-		
 
 		renderRequest.setAttribute("groupId", groupId);
 
@@ -440,39 +611,75 @@ public class AdminPortlet extends FreeMarkerPortlet {
 			"portletNamespace",
 			themeDisplay.getPortletDisplay().getNamespace());
 
-		renderRequest.setAttribute(
-			"url", generateURL(renderRequest, renderResponse));
+	}
 
-		renderRequest.setAttribute("constant", generalConstant());
-		
-		long workingUnitId = ParamUtil.getLong(renderRequest, "workingUnitId");
+	private String getListDictGroupByDictItem(
+		DictItem dictItem, ServiceContext serviceContext) {
 
-		WorkingUnit workingUnit = null;
+		List<String> result = new ArrayList<String>();
+		LinkedHashMap<String, Object> params =
+			new LinkedHashMap<String, Object>();
+		DictcollectionInterface dictItemDataUtil = new DictCollectionActions();
+		params.put("groupId", String.valueOf(dictItem.getGroupId()));
+		params.put(
+			DictItemGroupTerm.DICT_ITEM_ID,
+			String.valueOf(dictItem.getDictItemId()));
 
-		if (workingUnitId > 0) {
-			try {
-				workingUnit =
-					WorkingUnitLocalServiceUtil.fetchWorkingUnit(workingUnitId);
-			}
-			catch (Exception e) {
-				_log.error(e);
-			}
-		}
-		
-		String wu = JSONFactoryUtil.looseSerialize(workingUnit);
-		JSONObject workingUnitObj = null;
+		JSONObject jsonData = dictItemDataUtil.getDictItemsGroup(
+			dictItem.getUserId(), dictItem.getCompanyId(),
+			dictItem.getGroupId(), params, new Sort[] {}, QueryUtil.ALL_POS,
+			QueryUtil.ALL_POS, serviceContext);
+
 		try {
-			workingUnitObj = JSONFactoryUtil.createJSONObject(wu);
-			workingUnitObj.put(
-				"ceremonyDate", DateTimeUtils.convertDateToString(
-					workingUnit.getCeremonyDate(), DateTimeUtils._TIMESTAMP));
+
+			// TODO template commented
+			// @SuppressWarnings("unchecked")
+			List<Document> listResults = (List<Document>) jsonData.get("data");
+
+			for (Document document : listResults) {
+
+				result.add(document.get(DictGroupTerm.GROUP_CODE).toString());
+
+			}
+
 		}
 		catch (Exception e) {
+
+			_log.error(e);
+		}
+		
+		_log.info("Dict_GROUP =====================>"+String.join(",", result));
+		return String.join(",", result);
+
+	}
+
+	private void renderFrontendWebJobposPortlet(
+		RenderRequest renderRequest, RenderResponse renderResponse)
+		throws IOException, PortletException {
+
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay) renderRequest.getAttribute(WebKeys.THEME_DISPLAY);
+
+		ServiceContext serviceContext = null;
+
+		try {
+			serviceContext = ServiceContextFactory.getInstance(renderRequest);
+		}
+		catch (Exception e) {
+			_log.error(e);
+			throw new NullPointerException();
 		}
 
-		// params for jobpos begin
+		BackendAuthImpl backendAuthImpl = new BackendAuthImpl();
+
+		long groupId = themeDisplay.getScopeGroupId();
+
+		long userId = themeDisplay.getUserId();
+
+		boolean isOmniadmin =
+			backendAuthImpl.isAdmin(serviceContext, StringPool.BLANK);
+
 		long jobPosId = ParamUtil.getLong(renderRequest, "jobPosId");
-		params.put("jobPos_jobPosId", jobPosId);
 
 		JobPos jobPos = null;
 
@@ -484,24 +691,293 @@ public class AdminPortlet extends FreeMarkerPortlet {
 				_log.error(e);
 			}
 		}
+
 		renderRequest.setAttribute("jobPos", jobPos);
-		// params for jobpos end
 
-		params.put("workingUnit_workingUnitId", workingUnitId);
-		renderRequest.setAttribute("workingUnit", workingUnitObj);
-		renderRequest.setAttribute("param", params);
-		
-		long employeeId = ParamUtil.getLong(renderRequest, "employeeId");
-		
-		Employee employeeObj= EmployeeLocalServiceUtil.fetchEmployee(employeeId);
+		renderRequest.setAttribute("groupId", groupId);
 
-		renderRequest.setAttribute("employee", employeeObj);
+		renderRequest.setAttribute("userId", userId);
+
+		renderRequest.setAttribute("isOmniadmin", isOmniadmin);
+
+		renderRequest.setAttribute(
+			"portletNamespace",
+			themeDisplay.getPortletDisplay().getNamespace());
+
 	}
 
-	private JSONObject generalConstant() {
+	private void renderFrontendWebEmployeePortlet(
+		RenderRequest renderRequest, RenderResponse renderResponse)
+		throws IOException, PortletException {
+
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay) renderRequest.getAttribute(WebKeys.THEME_DISPLAY);
+
+		// EmployeeActions employeeActions = new EmployeeActions();
+
+		ServiceContext serviceContext = null;
+
+		try {
+			serviceContext = ServiceContextFactory.getInstance(renderRequest);
+		}
+		catch (Exception e) {
+			_log.error(e);
+			throw new NullPointerException();
+		}
+
+		BackendAuthImpl backendAuthImpl = new BackendAuthImpl();
+
+		long groupId = themeDisplay.getScopeGroupId();
+
+		long userId = themeDisplay.getUserId();
+
+		boolean isOmniadmin =
+			backendAuthImpl.isAdmin(serviceContext, StringPool.BLANK);
+
+		long employeeId = ParamUtil.getLong(renderRequest, "employeeId");
+
+		Employee employee = null;
+
+		JSONObject result = JSONFactoryUtil.createJSONObject();
+
+		if (employeeId > 0) {
+			try {
+				employee = EmployeeLocalServiceUtil.fetchEmployee(employeeId);
+
+				result = ObjectConverterUtil.objectToJSON(
+					employee.getClass(), employee);
+
+				long mappingUserId = employee.getMappingUserId();
+
+				if (mappingUserId > 0) {
+					User user = UserLocalServiceUtil.getUser(mappingUserId);
+					JSONObject userInfo = JSONFactoryUtil.createJSONObject();
+
+					userInfo.put("email", user.getEmailAddress());
+					userInfo.put("screenName", user.getScreenName());
+					userInfo.put(
+						"lock",
+						user.getStatus() == WorkflowConstants.STATUS_APPROVED
+							? false : true);
+
+					renderRequest.setAttribute(
+						"employee_accountInfo", userInfo);
+
+				}
+
+				renderRequest.setAttribute(
+					"employee_fileAttachs",
+					getFileAttachment(employeeId, groupId));
+
+			}
+			catch (Exception e) {
+				_log.error(e);
+			}
+		}
+
+		if (employee != null) {
+			try {
+				List<JSONObject> results = new ArrayList<JSONObject>();
+				List<EmployeeJobPos> employeeJobPos =
+					EmployeeJobPosLocalServiceUtil.findByF_EmployeeId(
+						employeeId);
+				for (EmployeeJobPos empjobpos : employeeJobPos) {
+					long jobPosId = empjobpos.getJobPostId();
+					long workingUnitId = empjobpos.getWorkingUnitId();
+					boolean mainJobPos =
+						empjobpos.getEmployeeJobPosId() == employee.getMainJobPostId()
+							? true : false;
+
+					JSONObject jsonObject = JSONFactoryUtil.createJSONObject();
+
+					jsonObject = ObjectConverterUtil.objectToJSON(
+						empjobpos.getClass(), empjobpos);
+
+					jsonObject.put("mainJobPos", mainJobPos);
+
+					jsonObject.put(
+						"employeeJobPosId", empjobpos.getEmployeeJobPosId());
+
+					try {
+						JobPos jobPos =
+							JobPosLocalServiceUtil.getJobPos(jobPosId);
+						WorkingUnit workingUnit =
+							WorkingUnitLocalServiceUtil.getWorkingUnit(
+								workingUnitId);
+
+						if (jobPos != null) {
+							jsonObject.put("leader", jobPos.getLeader());
+							jsonObject.put("jobPosTitle", jobPos.getTitle());
+							jsonObject.put("jobPosId", jobPos.getJobPosId());
+						}
+
+						if (workingUnit != null) {
+							jsonObject.put(
+								"workingUnitName", workingUnit.getName());
+							jsonObject.put(
+								"workingUnitId",
+								workingUnit.getWorkingUnitId());
+
+						}
+
+					}
+					catch (Exception e) {
+						continue;
+					}
+
+					results.add(jsonObject);
+
+				}
+
+				renderRequest.setAttribute("employee_jobPos", results);
+			}
+			catch (Exception e) {
+				_log.error(e);
+			}
+		}
+
+		PortletConfig portletConfig = PortletConfigFactoryUtil.get(
+			themeDisplay.getPortletDisplay().getId());
+
+		ResourceBundle resourceBundle =
+			portletConfig.getResourceBundle(themeDisplay.getLocale());
+
+		// ResourceBundle resourceBundle =
+		// ResourceBundle.getBundle("content.Language", UTF8Control.INSTANCE);
+
+		List<JSONObject> workingStatus = new ArrayList<JSONObject>();
+
+		JSONObject working = JSONFactoryUtil.createJSONObject();
+		working.put("status", 1);
+		working.put(
+			"value", LanguageUtil.get(resourceBundle, "working-status"));
+		JSONObject notworking = JSONFactoryUtil.createJSONObject();
+		notworking.put("status", 0);
+		notworking.put(
+			"value", LanguageUtil.get(resourceBundle, "notworking-status"));
+
+		workingStatus.add(working);
+		workingStatus.add(notworking);
+
+		renderRequest.setAttribute("employee_workingStatus", workingStatus);
+
+		renderRequest.setAttribute("employee", result);
+
+		renderRequest.setAttribute("groupId", groupId);
+
+		renderRequest.setAttribute("userId", userId);
+
+		renderRequest.setAttribute("isOmniadmin", isOmniadmin);
+
+		renderRequest.setAttribute(
+			"portletNamespace",
+			themeDisplay.getPortletDisplay().getNamespace());
+
+	}
+
+	private JSONObject generalParamsCommon(RenderRequest renderRequest) {
+
+		JSONObject params = JSONFactoryUtil.createJSONObject();
+
+		// FrontendWebEmployeePortlet
+		long employeeId = ParamUtil.getLong(renderRequest, "employeeId");
+		params.put("employeeId", employeeId);
+
+		// FrontendWebJobposPortlet
+		long jobPosId = ParamUtil.getLong(renderRequest, "jobPosId");
+		params.put("jobPos_jobPosId", jobPosId);
+
+		// FrontendWebAdminPortlet
+		ServiceContext serviceContext = null;
+
+		try {
+			serviceContext = ServiceContextFactory.getInstance(renderRequest);
+		}
+		catch (Exception e) {
+			_log.error(e);
+			throw new NullPointerException();
+		}
+
+		long groupId = serviceContext.getScopeGroupId();
+
+		DictCollectionActions collectionActions = new DictCollectionActions();
+
+		String collectionCode =
+			ParamUtil.getString(renderRequest, "collectionCode");
+
+		String itemCode = ParamUtil.getString(renderRequest, "itemCode");
+
+		String groupCode = ParamUtil.getString(renderRequest, "groupCode");
+
+		DictItem dictItem = null;
+
+		JSONObject dictItemJSON = null;
+
+		try {
+
+			if (Validator.isNotNull(itemCode) &&
+				Validator.isNotNull(collectionCode)) {
+
+				dictItem = collectionActions.getDictItemByItemCode(
+					collectionCode, itemCode, groupId, serviceContext);
+
+				dictItemJSON = ObjectConverterUtil.objectToJSON(
+					dictItem.getClass(), dictItem);
+
+				if (Validator.isNotNull(dictItem) &&
+					Validator.isNotNull(dictItemJSON)) {
+					dictItemJSON.put(
+						"groupCode",
+						getListDictGroupByDictItem(dictItem, serviceContext));
+					if (dictItem.getParentItemId() > 0) {
+						dictItem = DictItemLocalServiceUtil.fetchDictItem(
+							dictItem.getParentItemId());
+						dictItemJSON.put(
+							"parentItemCode", dictItem.getItemCode());
+					}
+				}
+			}
+
+			if (Validator.isNotNull(dictItem)) {
+				dictItem = collectionActions.getDictItemByItemCode(
+					collectionCode, dictItem.getItemCode(), groupId,
+					serviceContext);
+			}
+		}
+		catch (Exception e) {
+
+		}
+
+		params.put("dictCollection_groupCode", groupCode);
+		params.put("activityType_itemCode", itemCode);
+		params.put("documentType_itemCode", itemCode);
+		params.put("dictCollection_collectionCode", collectionCode);
+		params.put("dictCollection_itemCode", itemCode);
+
+		// FrontendWebWorkingUnitPortlet
+		long workingUnitId = ParamUtil.getLong(renderRequest, "workingUnitId");
+
+		params.put("workingUnit_workingUnitId", workingUnitId);
+		params.put("workingUnit_className", WorkingUnit.class.getName());
+
+		return params;
+	}
+
+	private JSONObject generalConstantsCommon(RenderRequest renderRequest) {
 
 		JSONObject constants = JSONFactoryUtil.createJSONObject();
 
+		// FrontendWebEmployeePortlet
+		constants.put("className", Employee.class.getName());
+		constants.put("collection_Academic", "ACADEMIC");
+		constants.put("alpaca_templateNo", "EMPLOYEE");
+
+		// FrontendWebJobposPortlet
+		constants.put(
+			"type_jobPos",
+			FrontendWebAdminPortletConstants.AdminMenuItemType.JOBPOS.toString());
+
+		// FrontendWebAdminPortlet
 		constants.put(
 			"type_activityType",
 			FrontendWebAdminPortletConstants.AdminMenuItemType.ACTIVITY.toString());
@@ -545,33 +1021,161 @@ public class AdminPortlet extends FreeMarkerPortlet {
 			"officeSite_officeSiteClassName",
 			FrontendWebAdminPortletConstants._OFFICESITE_CLASSNAME);
 
-		// jobpos
+		// FrontendWebWorkingUnitPortlet
 		constants.put(
-			"type_jobPos",
-			FrontendWebAdminPortletConstants.AdminMenuItemType.JOBPOS.toString());
+			"type_workingUnit",
+			FrontendWebAdminPortletConstants.AdminMenuItemType.WORKINGUNIT.toString());
+
+		constants.put(
+			"workingUnit_workingUnitClassName", WorkingUnit.class.getName());
+		
+		constants.put(
+				"notification_interval", generateNotiIntervals(renderRequest));
 
 		return constants;
 	}
+	
+	private List<JSONObject> generateNotiIntervals(RenderRequest renderRequest) {
+		
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay) renderRequest.getAttribute(WebKeys.THEME_DISPLAY);
+		PortletConfig portletConfig = PortletConfigFactoryUtil.get(
+			themeDisplay.getPortletDisplay().getId());
 
-	private JSONObject generateURL(
+		ResourceBundle resourceBundle =
+			portletConfig.getResourceBundle(themeDisplay.getLocale());
+		
+		List<JSONObject> intervals = new ArrayList<JSONObject>();
+		JSONObject interval1 = JSONFactoryUtil.createJSONObject();
+		interval1.put("value", "minutely");
+		interval1.put("text", LanguageUtil.get(resourceBundle, "minutely"));
+		intervals.add(interval1);
+
+		JSONObject interval2 = JSONFactoryUtil.createJSONObject();
+		interval2.put("value", "5-mins");
+		interval2.put("text", LanguageUtil.get(resourceBundle, "5-mins"));
+		intervals.add(interval2);
+
+		JSONObject interval3 = JSONFactoryUtil.createJSONObject();
+		interval3.put("value", "15-mins");
+		interval3.put("text", LanguageUtil.get(resourceBundle, "15-mins"));
+		intervals.add(interval3);
+
+		JSONObject interval4 = JSONFactoryUtil.createJSONObject();
+		interval4.put("value", "30-mins");
+		interval4.put("text", LanguageUtil.get(resourceBundle, "30-mins"));
+		intervals.add(interval4);
+
+		JSONObject interval5 = JSONFactoryUtil.createJSONObject();
+		interval5.put("value", "hourly");
+		interval5.put("text", LanguageUtil.get(resourceBundle, "hourly"));
+		intervals.add(interval5);
+
+		JSONObject interval6 = JSONFactoryUtil.createJSONObject();
+		interval6.put("value", "daily");
+		interval6.put("text", LanguageUtil.get(resourceBundle, "daily"));
+		intervals.add(interval6);
+		
+		return intervals;
+		
+	}
+
+	private JSONObject generateURLCommon(
 		RenderRequest renderRequest, RenderResponse renderResponse)
 		throws WindowStateException {
 
 		JSONObject portletURLs = JSONFactoryUtil.createJSONObject();
+
 		try {
 
+			///////////////////// FrontendWebEmployeePortlet
+			JSONObject employeePortlet = JSONFactoryUtil.createJSONObject();
+
+			PortletURL employeeIndexURL = renderResponse.createRenderURL();
+			employeeIndexURL.setParameter("mvcPath", "/templates/employee/employee_index.ftl");
+			employeeIndexURL.setWindowState(LiferayWindowState.EXCLUSIVE);
+
+			employeePortlet.put("employee_index", employeeIndexURL);
+
+			PortletURL employeeCreateURL = renderResponse.createRenderURL();
+			employeeCreateURL.setParameter(
+				"mvcPath", "/templates/employee/employee_create.ftl");
+			employeeCreateURL.setWindowState(LiferayWindowState.EXCLUSIVE);
+
+			employeePortlet.put("employee_create", employeeCreateURL);
+
+			PortletURL employeeDetailURL = renderResponse.createRenderURL();
+			employeeDetailURL.setParameter(
+				"mvcPath", "/templates/employee/employee_detail.ftl");
+			employeeDetailURL.setWindowState(LiferayWindowState.EXCLUSIVE);
+
+			employeePortlet.put("employee_detail", employeeDetailURL);
+
+			PortletURL employeeDetaiUpdateJobposlURL =
+				renderResponse.createRenderURL();
+			employeeDetaiUpdateJobposlURL.setParameter(
+				"mvcPath",
+				"/templates/employee/employee_detail_update_jobpos.ftl");
+			employeeDetaiUpdateJobposlURL.setWindowState(
+				LiferayWindowState.EXCLUSIVE);
+
+			employeePortlet.put(
+				"employee_detail_update_jobpos", employeeDetaiUpdateJobposlURL);
+
+			PortletURL employeeBirthdatelURL = renderResponse.createRenderURL();
+			employeeBirthdatelURL.setParameter(
+				"mvcPath", "/templates/employee/employee_birthdate.ftl");
+			employeeBirthdatelURL.setWindowState(LiferayWindowState.EXCLUSIVE);
+
+			employeePortlet.put("employee_birthdate", employeeBirthdatelURL);
+
+			portletURLs.put("employeePortlet", employeePortlet);
+
+			///////////////////// FrontendWebJobposPortlet
+			JSONObject adminJobPosPortlet = JSONFactoryUtil.createJSONObject();
+
+			PortletURL jobposListURL = renderResponse.createRenderURL();
+			jobposListURL.setParameter(
+				"mvcPath", "/templates/jobpos/jobpos_list.ftl");
+			jobposListURL.setWindowState(LiferayWindowState.EXCLUSIVE);
+
+			adminJobPosPortlet.put("jobpos_list", jobposListURL);
+
+			PortletURL jobposDetailURL = renderResponse.createRenderURL();
+			jobposDetailURL.setParameter(
+				"mvcPath", "/templates/jobpos/jobpos_detail.ftl");
+			jobposDetailURL.setWindowState(LiferayWindowState.EXCLUSIVE);
+
+			adminJobPosPortlet.put("jobpos_detail", jobposDetailURL);
+
+			PortletURL jobposCreateURL = renderResponse.createRenderURL();
+			jobposCreateURL.setParameter(
+				"mvcPath", "/templates/jobpos/jobpos_create.ftl");
+			jobposCreateURL.setWindowState(LiferayWindowState.EXCLUSIVE);
+
+			adminJobPosPortlet.put("jobpos_create", jobposCreateURL);
+
+			PortletURL jobposSaveURL = renderResponse.createActionURL();
+
+			jobposSaveURL.setParameter(ActionRequest.ACTION_NAME, "saveJobPos");
+			jobposSaveURL.setWindowState(LiferayWindowState.EXCLUSIVE);
+			adminJobPosPortlet.put("jobpos_edit_action", jobposSaveURL);
+
+			portletURLs.put("adminJobPosPortlet", adminJobPosPortlet);
+
+			///////////////////// FrontendWebAdminPortlet
 			JSONObject adminDataMgtPortlet = JSONFactoryUtil.createJSONObject();
 
 			PortletURL activityTypeListURL = renderResponse.createRenderURL();
 			activityTypeListURL.setParameter(
-				"mvcPath", "/templates/datamgt/activity_type_list.ftl");
+				"mvcPath", "/templates/html/activity_type_list.ftl");
 			activityTypeListURL.setWindowState(LiferayWindowState.EXCLUSIVE);
 
 			adminDataMgtPortlet.put("activity_type_list", activityTypeListURL);
 
 			PortletURL activityTypeDetailURL = renderResponse.createRenderURL();
 			activityTypeDetailURL.setParameter(
-				"mvcPath", "/templates/datamgt/activity_type_detail.ftl");
+				"mvcPath", "/templates/html/activity_type_detail.ftl");
 			activityTypeDetailURL.setWindowState(LiferayWindowState.EXCLUSIVE);
 
 			adminDataMgtPortlet.put(
@@ -579,7 +1183,7 @@ public class AdminPortlet extends FreeMarkerPortlet {
 
 			PortletURL activityTypeCreateURL = renderResponse.createRenderURL();
 			activityTypeCreateURL.setParameter(
-				"mvcPath", "/templates/datamgt/activity_type_create.ftl");
+				"mvcPath", "/templates/html/activity_type_create.ftl");
 			activityTypeCreateURL.setWindowState(LiferayWindowState.EXCLUSIVE);
 
 			adminDataMgtPortlet.put(
@@ -681,14 +1285,14 @@ public class AdminPortlet extends FreeMarkerPortlet {
 
 			PortletURL documentTypeListURL = renderResponse.createRenderURL();
 			documentTypeListURL.setParameter(
-				"mvcPath", "/templates/datamgt/document_type_list.ftl");
+				"mvcPath", "/templates/html/document_type_list.ftl");
 			documentTypeListURL.setWindowState(LiferayWindowState.EXCLUSIVE);
 
 			adminDataMgtPortlet.put("document_type_list", documentTypeListURL);
 
 			PortletURL documentTypeDetailURL = renderResponse.createRenderURL();
 			documentTypeDetailURL.setParameter(
-				"mvcPath", "/templates/datamgt/document_type_detail.ftl");
+				"mvcPath", "/templates/html/document_type_detail.ftl");
 			documentTypeDetailURL.setWindowState(LiferayWindowState.EXCLUSIVE);
 
 			adminDataMgtPortlet.put(
@@ -696,7 +1300,7 @@ public class AdminPortlet extends FreeMarkerPortlet {
 
 			PortletURL documentTypeCreateURL = renderResponse.createRenderURL();
 			documentTypeCreateURL.setParameter(
-				"mvcPath", "/templates/datamgt/document_type_create.ftl");
+				"mvcPath", "/templates/html/document_type_create.ftl");
 			documentTypeCreateURL.setWindowState(LiferayWindowState.EXCLUSIVE);
 
 			adminDataMgtPortlet.put(
@@ -710,21 +1314,21 @@ public class AdminPortlet extends FreeMarkerPortlet {
 
 			PortletURL labelListURL = renderResponse.createRenderURL();
 			labelListURL.setParameter(
-				"mvcPath", "/templates/datamgt/label_list.ftl");
+				"mvcPath", "/templates/html/label_list.ftl");
 			labelListURL.setWindowState(LiferayWindowState.EXCLUSIVE);
 
 			adminLabelPortlet.put("label_list", labelListURL);
 
 			PortletURL labelDetailURL = renderResponse.createRenderURL();
 			labelDetailURL.setParameter(
-				"mvcPath", "/templates/datamgt/label_detail.ftl");
+				"mvcPath", "/templates/html/label_detail.ftl");
 			labelDetailURL.setWindowState(LiferayWindowState.EXCLUSIVE);
 
 			adminLabelPortlet.put("label_detail", labelDetailURL);
 
 			PortletURL labelCreateURL = renderResponse.createRenderURL();
 			labelCreateURL.setParameter(
-				"mvcPath", "/templates/datamgt/label_create.ftl");
+				"mvcPath", "/templates/html/label_create.ftl");
 			labelCreateURL.setWindowState(LiferayWindowState.EXCLUSIVE);
 
 			adminLabelPortlet.put("label_create", labelCreateURL);
@@ -738,21 +1342,21 @@ public class AdminPortlet extends FreeMarkerPortlet {
 
 			PortletURL locationListURL = renderResponse.createRenderURL();
 			locationListURL.setParameter(
-				"mvcPath", "/templates/datamgt/location_list.ftl");
+				"mvcPath", "/templates/html/location_list.ftl");
 			locationListURL.setWindowState(LiferayWindowState.EXCLUSIVE);
 
 			adminLocationPortlet.put("location_list", locationListURL);
 
 			PortletURL locationDetailURL = renderResponse.createRenderURL();
 			locationDetailURL.setParameter(
-				"mvcPath", "/templates/datamgt/location_detail.ftl");
+				"mvcPath", "/templates/html/location_detail.ftl");
 			locationDetailURL.setWindowState(LiferayWindowState.EXCLUSIVE);
 
 			adminLocationPortlet.put("location_detail", locationDetailURL);
 
 			PortletURL locationCreateURL = renderResponse.createRenderURL();
 			locationCreateURL.setParameter(
-				"mvcPath", "/templates/datamgt/location_create.ftl");
+				"mvcPath", "/templates/html/location_create.ftl");
 			locationCreateURL.setWindowState(LiferayWindowState.EXCLUSIVE);
 
 			adminLocationPortlet.put("location_create", locationCreateURL);
@@ -760,6 +1364,28 @@ public class AdminPortlet extends FreeMarkerPortlet {
 			portletURLs.put("adminLocationPortlet", adminLocationPortlet);
 
 			// Notification -> include portlet
+			
+			JSONObject adminNotificationPortlet =
+					JSONFactoryUtil.createJSONObject();
+
+			PortletURL notificationListURL = renderResponse.createRenderURL();
+			notificationListURL.setParameter(
+				"mvcPath", "/templates/notification/notification_template_list.ftl");
+			notificationListURL.setWindowState(LiferayWindowState.EXCLUSIVE);
+
+			adminNotificationPortlet.put(
+				"notification_template_list", notificationListURL);
+
+			PortletURL notificationDetailURL = renderResponse.createRenderURL();
+			notificationDetailURL.setParameter(
+				"mvcPath", "/templates/notification/notification_template_detail.ftl");
+			notificationDetailURL.setWindowState(LiferayWindowState.EXCLUSIVE);
+
+			adminNotificationPortlet.put(
+				"notification_template_detail", notificationDetailURL);
+
+			portletURLs.put(
+				"adminNotificationPortlet", adminNotificationPortlet);
 
 			// Workingunit
 
@@ -790,49 +1416,6 @@ public class AdminPortlet extends FreeMarkerPortlet {
 			adminWorkingUnitPortlet.put(
 				"working_unit_create", workingUnitCreateURL);
 
-			JSONObject employeePortlet = JSONFactoryUtil.createJSONObject();
-
-			PortletURL employeeListURL = renderResponse.createRenderURL();
-			employeeListURL.setParameter(
-				"mvcPath", "/templates/employee/employee_list.ftl");
-			employeeListURL.setWindowState(LiferayWindowState.EXCLUSIVE);
-
-			employeePortlet.put("employee_list", employeeListURL);
-
-			PortletURL employeeCreateURL = renderResponse.createRenderURL();
-			employeeCreateURL.setParameter(
-				"mvcPath", "/templates/employee/employee_create.ftl");
-			employeeCreateURL.setWindowState(LiferayWindowState.EXCLUSIVE);
-
-			employeePortlet.put("employee_create", employeeCreateURL);
-
-			PortletURL employeeDetailURL = renderResponse.createRenderURL();
-			employeeDetailURL.setParameter(
-				"mvcPath", "/templates/employee/employee_detail.ftl");
-			employeeDetailURL.setWindowState(LiferayWindowState.EXCLUSIVE);
-
-			employeePortlet.put("employee_detail", employeeDetailURL);
-
-			PortletURL employeeDetaiUpdateJobposlURL =
-				renderResponse.createRenderURL();
-			employeeDetaiUpdateJobposlURL.setParameter(
-				"mvcPath",
-				"/templates/employee/employee_detail_update_jobpos.ftl");
-			employeeDetaiUpdateJobposlURL.setWindowState(
-				LiferayWindowState.EXCLUSIVE);
-
-			employeePortlet.put(
-				"employee_detail_update_jobpos", employeeDetaiUpdateJobposlURL);
-
-			PortletURL employeeBirthdatelURL = renderResponse.createRenderURL();
-			employeeBirthdatelURL.setParameter(
-				"mvcPath", "/templates/employee/employee_birthdate.ftl");
-			employeeBirthdatelURL.setWindowState(LiferayWindowState.EXCLUSIVE);
-
-			employeePortlet.put("employee_birthdate", employeeBirthdatelURL);
-
-			portletURLs.put("employeePortlet", employeePortlet);
-
 			portletURLs.put("adminWorkingUnitPortlet", adminWorkingUnitPortlet);
 
 			// Workspace -> include portlet
@@ -842,36 +1425,6 @@ public class AdminPortlet extends FreeMarkerPortlet {
 			// Contact -> include portlet
 
 			// Jobpos -> include portlet
-			JSONObject adminJobPosPortlet = JSONFactoryUtil.createJSONObject();
-
-			PortletURL jobposListURL = renderResponse.createRenderURL();
-			jobposListURL.setParameter(
-				"mvcPath", "/templates/jobpos/jobpos_list.ftl");
-			jobposListURL.setWindowState(LiferayWindowState.EXCLUSIVE);
-
-			adminJobPosPortlet.put("jobpos_list", jobposListURL);
-
-			PortletURL jobposDetailURL = renderResponse.createRenderURL();
-			jobposDetailURL.setParameter(
-				"mvcPath", "/templates/jobpos/jobpos_detail.ftl");
-			jobposDetailURL.setWindowState(LiferayWindowState.EXCLUSIVE);
-
-			adminJobPosPortlet.put("jobpos_detail", jobposDetailURL);
-
-			PortletURL jobposCreateURL = renderResponse.createRenderURL();
-			jobposCreateURL.setParameter(
-				"mvcPath", "/templates/jobpos/jobpos_create.ftl");
-			jobposCreateURL.setWindowState(LiferayWindowState.EXCLUSIVE);
-
-			adminJobPosPortlet.put("jobpos_create", jobposCreateURL);
-
-			PortletURL jobposSaveURL = renderResponse.createActionURL();
-
-			jobposSaveURL.setParameter(ActionRequest.ACTION_NAME, "saveJobPos");
-			jobposSaveURL.setWindowState(LiferayWindowState.EXCLUSIVE);
-			adminJobPosPortlet.put("jobpos_edit_action", jobposSaveURL);
-
-			portletURLs.put("adminJobPosPortlet", adminJobPosPortlet);
 
 		}
 		catch (Exception e) {
@@ -881,112 +1434,59 @@ public class AdminPortlet extends FreeMarkerPortlet {
 		return portletURLs;
 	}
 
-	public void saveDictItem(
-		ActionRequest actionRequest, ActionResponse actionResponse)
-		throws IOException {
+	// TODO template commented
+	private List<JSONObject> getFileAttachment(long employeeId, long groupId) {
 
-		ThemeDisplay themeDisplay =
-			(ThemeDisplay) actionRequest.getAttribute(WebKeys.THEME_DISPLAY);
+		// FileAttachActions attachActions = new FileAttachActions();
+		// List<FileAttach> fileAttachs = attachActions.getFileAttachs(
+		// groupId, Employee.class.getName(), String.valueOf(employeeId), 0);
+		List<JSONObject> attachs = new ArrayList<JSONObject>();
 
-		long groupId = themeDisplay.getScopeGroupId();
+		// for (FileAttach fileAttach : fileAttachs) {
+		//
+		// long fileEntryId = fileAttach.getFileEntryId();
+		// JSONObject fileAttachJSON = JSONFactoryUtil.createJSONObject();
+		// try {
+		//
+		// FileEntry fileEntry =
+		// DLAppLocalServiceUtil.getFileEntry(fileEntryId);
+		//
+		// fileAttachJSON.put(
+		// "fileAttachId", fileAttach.getFileAttachId());
+		// fileAttachJSON.put(
+		// "createdDate", DateTimeUtils.convertDateToString(
+		// fileAttach.getCreateDate(), DateTimeUtils._TIMESTAMP));
+		// fileAttachJSON.put(
+		// "modifiedDate",
+		// DateTimeUtils.convertDateToString(
+		// fileAttach.getModifiedDate(),
+		// DateTimeUtils._TIMESTAMP));
+		// fileAttachJSON.put("fullName", fileAttach.getFullName());
+		// fileAttachJSON.put("email", fileAttach.getEmail());
+		// fileAttachJSON.put("fileName", fileEntry.getFileName());
+		// fileAttachJSON.put("fileType", fileEntry.getMimeType());
+		// fileAttachJSON.put("fileSize", fileEntry.getSize());
+		// fileAttachJSON.put("version", fileEntry.getVersion());
+		// fileAttachJSON.put("source", fileAttach.getSource());
+		// fileAttachJSON.put("sourceUrl", fileAttach.getSourceUrl());
+		// fileAttachJSON.put("docFileId", fileAttach.getDocFileId());
+		//
+		// attachs.add(fileAttachJSON);
+		//
+		// }
+		// catch (Exception e) {
+		// _log.info(
+		// "Can't not get FileEntry with fileEntryId = " +
+		// fileEntryId);
+		// continue;
+		// }
+		//
+		// }
 
-		long userId = themeDisplay.getUserId();
-
-		String itemCode = ParamUtil.getString(actionRequest, "itemCode");
-		String itemName = ParamUtil.getString(actionRequest, "itemName");
-		String itemNameEN = ParamUtil.getString(actionRequest, "itemNameEN");
-		String itemCodeOld = ParamUtil.getString(actionRequest, "itemCodeOld");
-		String collectionCode =
-			ParamUtil.getString(actionRequest, "collectionCode");
-		String itemDescription =
-			ParamUtil.getString(actionRequest, "itemDescription");
-		int sibling = ParamUtil.getInteger(actionRequest, "sibling");
-		String parentItemCode =
-			ParamUtil.getString(actionRequest, "parentItemCode");
-		// String groupCode = ParamUtil.getString(actionRequest, "groupCode");
-
-		String metaData = ParamUtil.getString(actionRequest, "metaData");
-
-		DictCollectionActions dictCollectionActions =
-			new DictCollectionActions();
-
-		JSONObject result = JSONFactoryUtil.createJSONObject();
-
-		try {
-			ServiceContext serviceContext =
-				ServiceContextFactory.getInstance(actionRequest);
-
-			DictItem dictItem = null;
-
-			if (Validator.isNotNull(itemCodeOld)) {
-
-				dictItem = dictCollectionActions.updateDictItemByItemCode(
-					userId, groupId, serviceContext, collectionCode,
-					itemCodeOld, itemCode, itemName, itemNameEN,
-					itemDescription, String.valueOf(sibling), parentItemCode);
-			}
-			else {
-				dictItem = dictCollectionActions.addDictItems(
-					userId, groupId, collectionCode, parentItemCode, itemCode,
-					itemName, itemNameEN, itemDescription,
-					String.valueOf(sibling), 0, metaData, serviceContext);
-			}
-
-			result.put(
-				"createDate", DateTimeUtils.convertDateToString(
-					dictItem.getCreateDate(), DateTimeUtils._TIMESTAMP));
-			result.put(
-				"modifiedDate", DateTimeUtils.convertDateToString(
-					dictItem.getModifiedDate(), DateTimeUtils._TIMESTAMP));
-			result.put("itemCode", dictItem.getItemCode());
-			result.put(
-				"itemName", Validator.isNotNull(dictItem.getItemName())
-					? dictItem.getItemName() : StringPool.BLANK);
-			result.put(
-				"itemNameEN", Validator.isNotNull(dictItem.getItemNameEN())
-					? dictItem.getItemNameEN() : StringPool.BLANK);
-			result.put("itemDescription", dictItem.getItemDescription());
-			result.put("parentItem", dictItem.getParentItemId());
-			result.put("level", dictItem.getLevel());
-			result.put("sibling", dictItem.getSibling());
-			result.put("treeIndex", dictItem.getTreeIndex());
-			result.put("dicItemId", dictItem.getDictItemId());
-
-		}
-		catch (Exception e) {
-			_log.error(e);
-			if (e instanceof UnauthenticationException) {
-
-				result.put("statusCode", 401);
-
-			}
-
-			if (e instanceof UnauthorizationException) {
-
-				result.put("statusCode", 403);
-
-			}
-
-			if (e instanceof NoSuchUserException) {
-
-				result.put("statusCode", 401);
-
-			}
-
-			if (e instanceof DuplicateCategoryException) {
-
-				result.put("statusCode", 409);
-
-			}
-			result.put("msg", "error");
-		}
-		finally {
-			writeJSON(actionRequest, actionResponse, result);
-		}
+		return attachs;
 
 	}
 
-	// jobpos
 	public void saveJobPos(
 		ActionRequest actionRequest, ActionResponse actionResponse)
 		throws IOException {
@@ -1033,6 +1533,7 @@ public class AdminPortlet extends FreeMarkerPortlet {
 				jobPos.getJobPosId(), permissions, serviceContext);
 			// }
 
+			// TODO template commented
 			// if (Validator.isNotNull(works)) {
 			// jobposActions.createJobposWorksPatch(
 			// userId, serviceContext.getCompanyId(), groupId,
@@ -1076,6 +1577,120 @@ public class AdminPortlet extends FreeMarkerPortlet {
 		}
 
 	}
+
+	public void saveDictItem(
+			ActionRequest actionRequest, ActionResponse actionResponse)
+			throws IOException {
+
+			ThemeDisplay themeDisplay =
+				(ThemeDisplay) actionRequest.getAttribute(WebKeys.THEME_DISPLAY);
+
+			long groupId = themeDisplay.getScopeGroupId();
+
+			long userId = themeDisplay.getUserId();
+
+			String itemCode = ParamUtil.getString(actionRequest, "itemCode");
+			String itemName = ParamUtil.getString(actionRequest, "itemName");
+			String itemNameEN = ParamUtil.getString(actionRequest, "itemNameEN");
+			String itemCodeOld = ParamUtil.getString(actionRequest, "itemCodeOld");
+			String collectionCode =
+				ParamUtil.getString(actionRequest, "collectionCode");
+			String itemDescription =
+				ParamUtil.getString(actionRequest, "itemDescription");
+			int sibling = ParamUtil.getInteger(actionRequest, "sibling", 0);
+			String parentItemCode =
+				ParamUtil.getString(actionRequest, "parentItemCode");
+			String groupCodes = ParamUtil.getString(actionRequest, "groupCode");
+
+			String metaData = ParamUtil.getString(actionRequest, "metaData");
+
+			DictCollectionActions dictCollectionActions =
+				new DictCollectionActions();
+
+			JSONObject result = JSONFactoryUtil.createJSONObject();
+
+			try {
+				ServiceContext serviceContext =
+					ServiceContextFactory.getInstance(actionRequest);
+
+				DictItem dictItem = null;
+
+				if (Validator.isNotNull(itemCodeOld)) {
+
+					dictItem = dictCollectionActions.updateDictItemByItemCode(
+						userId, groupId, serviceContext, collectionCode,
+						itemCodeOld, itemCode, itemName, itemNameEN,
+						itemDescription, String.valueOf(sibling), parentItemCode);
+
+					dictItem = dictCollectionActions.updateMetaDataByItemCode(
+						userId, groupId, serviceContext, collectionCode,
+						itemCode, metaData);
+					
+				}
+				else {
+					dictItem = dictCollectionActions.addDictItems(
+						userId, groupId, collectionCode, parentItemCode, itemCode,
+						itemName, itemNameEN, itemDescription,
+						String.valueOf(sibling), 0, metaData, serviceContext);
+				}
+
+			groupCodes = dictCollectionActions.updateDictItemGroup(userId, groupId, dictItem.getDictItemId(),
+					groupCodes, collectionCode, serviceContext);
+
+				result.put(
+					"createDate", DateTimeUtils.convertDateToString(
+						dictItem.getCreateDate(), DateTimeUtils._TIMESTAMP));
+				result.put(
+					"modifiedDate", DateTimeUtils.convertDateToString(
+						dictItem.getModifiedDate(), DateTimeUtils._TIMESTAMP));
+				result.put("itemCode", dictItem.getItemCode());
+				result.put(
+					"itemName", Validator.isNotNull(dictItem.getItemName())
+						? dictItem.getItemName() : StringPool.BLANK);
+				result.put(
+					"itemNameEN", Validator.isNotNull(dictItem.getItemNameEN())
+						? dictItem.getItemNameEN() : StringPool.BLANK);
+				result.put("itemDescription", dictItem.getItemDescription());
+				result.put("parentItem", dictItem.getParentItemId());
+				result.put("level", dictItem.getLevel());
+				result.put("sibling", dictItem.getSibling());
+				result.put("treeIndex", dictItem.getTreeIndex());
+				result.put("dictItemId", dictItem.getDictItemId());
+				result.put("groupCode", groupCodes);
+
+			}
+			catch (Exception e) {
+				_log.error(e);
+				if (e instanceof UnauthenticationException) {
+
+					result.put("statusCode", 401);
+
+				}
+
+				if (e instanceof UnauthorizationException) {
+
+					result.put("statusCode", 403);
+
+				}
+
+				if (e instanceof NoSuchUserException) {
+
+					result.put("statusCode", 401);
+
+				}
+
+				if (e instanceof DuplicateCategoryException) {
+
+					result.put("statusCode", 409);
+
+				}
+				result.put("msg", "error");
+			}
+			finally {
+				writeJSON(actionRequest, actionResponse, result);
+			}
+
+		}
 
 	private Log _log = LogFactoryUtil.getLog(AdminPortlet.class.getName());
 }

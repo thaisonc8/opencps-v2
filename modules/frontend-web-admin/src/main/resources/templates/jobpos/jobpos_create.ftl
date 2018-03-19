@@ -1,6 +1,4 @@
-<#if (Request)??>
 <#include "init.ftl">
-</#if>
 
 <div class="modal-header form-group">
 
@@ -59,7 +57,8 @@
 		</div>
 
 		<div class="form-group">
-			<button class="btn btn-sm btn-active btn-default" id="addJobpos" name="addJobpos" type="button" >
+			<button class="btn btn-sm btn-active" id="_jobPos_submitAddJobpos" name="_jobPos_submitAddJobpos" type="button" 
+				data-loading-text="<i class='fa fa-spinner fa-spin '></i> Đang lưu thông tin...">
 				<i class="fa fa-check-circle"></i>
 				<span class="lfr-btn-label">Xác nhận</span>
 				
@@ -82,7 +81,7 @@
 
 (function($) {
 	
-	$(document).on('click', '#addJobpos', function(event){
+	$(document).on('click', '#_jobPos_submitAddJobpos', function(event){
 		
 		event.preventDefault();
 		event.stopPropagation();
@@ -94,16 +93,16 @@
 			return;
 		}
 		
-		var workingUnitId = $( "#_jobposAdd_workingUnitId" ).val();
+		var workingUnitId = $( "#_jobposAdd_workingUnitId" ).val().trim();
 		
 		workingUnitId = ( workingUnitId == "" || workingUnitId == null )?0:workingUnitId;
 		
 		// create a new jobpos
 		$("#_jobpos_listView").getKendoListView().dataSource.add({
 		
-			title: $( "#_jobposAdd_title" ).val(),
-			leader: $( "#_jobposAdd_leader" ).val(),
-			description: $( "#_jobposAdd_description" ).val(),
+			title: $( "#_jobposAdd_title" ).val().trim(),
+			leader: $( "#_jobposAdd_leader" ).val().trim(),
+			description: $( "#_jobposAdd_description" ).val().trim(),
 			workingUnitId: workingUnitId
 			
 		});
@@ -133,7 +132,8 @@
 						sort: 'name'
 					},
 					success: function(result) {
-					
+						
+						result["data"] = result.total==0 ? []: result["data"];
 						options.success(result);
 						
 					},

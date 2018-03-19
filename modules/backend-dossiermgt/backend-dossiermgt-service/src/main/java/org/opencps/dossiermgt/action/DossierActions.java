@@ -2,13 +2,12 @@ package org.opencps.dossiermgt.action;
 
 import java.util.Date;
 import java.util.LinkedHashMap;
-import java.util.List;
 
 import org.opencps.dossiermgt.model.Dossier;
 import org.opencps.dossiermgt.model.DossierAction;
-import org.opencps.dossiermgt.model.ProcessAction;
 
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.service.ServiceContext;
@@ -57,13 +56,8 @@ public interface DossierActions {
 	public Dossier resetDossier(long groupId, long dossierId, String referenceUid, ServiceContext context)
 			throws PortalException;
 
-	public List<ProcessAction> getNextActions(long groupId, long dossierId, String referenceUid) throws PortalException;
-
-	public List<DossierAction> getDossierActions(long groupId, long dossierId, String referenceUid)
-			throws PortalException;
-
 	public DossierAction doAction(long groupId, long dossierId, String referenceUid, String actionCode,
-			long processActionId, String actionUser, String actionNote, long assignUserId, long userId,
+			long processActionId, String actionUser, String actionNote, long assignUserId, long userId, String subUsers,
 			ServiceContext context) throws PortalException;
 
 	public Dossier markerVisited(long groupId, long dossierId, String referenceUid) throws PortalException;
@@ -73,4 +67,17 @@ public interface DossierActions {
 
 	public JSONObject getContacts(long groupId, long dossierId, String referenceUid) throws PortalException;
 
+	public JSONObject getDossierActions(long dossierId, long groupId, Boolean owner, int start, int end, String sort,
+			String order, ServiceContext serviceContext) throws PortalException;
+
+	public JSONArray getNextActions(long userId, long companyId, long groupId, LinkedHashMap<String, Object> params,
+			Sort[] sorts, int start, int end, ServiceContext serviceContext) throws PortalException;
+
+	public Dossier cloneDossier(long groupId, long dossierId, ServiceContext serviceContext) throws PortalException;
+
+	public JSONObject getDossierTodo(long userId, long companyId, long groupId, LinkedHashMap<String, Object> params,
+			Sort[] sorts, ServiceContext serviceContext);
+	
+	public JSONObject getDossierTodoPermission(long userId, long companyId, long groupId, LinkedHashMap<String, Object> params,
+			Sort[] sorts, ServiceContext serviceContext);
 }

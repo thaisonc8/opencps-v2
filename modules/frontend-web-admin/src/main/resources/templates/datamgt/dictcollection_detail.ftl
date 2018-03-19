@@ -1,6 +1,4 @@
-<#if (Request)??>
 <#include "init.ftl">
-</#if>
 
 <div class="box-s2">
 		
@@ -21,16 +19,12 @@
 		</ul>
 
 		<div id="_collectionDetail_info_link">
-			
-			<#include "dictcollection_detail_info.ftl">
 
 		</div>
 
 		<div id="_collectionDetail_dictItem_link"></div>
 
 		<div id="_collectionDetail_formTemplate_link">
-			
-			<#include "dictcollection_detail_formtemplate.ftl">
 
 		</div>
 
@@ -41,20 +35,30 @@
 <script>
 $(document).ready(function() {
 
-    $("#_collectionDetail_tabstrip").kendoTabStrip({
+    var collectionTabs = $("#_collectionDetail_tabstrip").kendoTabStrip({
 
 
 		select: function(e){
 			
-			if($(e.item).index() == 1){
+			if($(e.item).index() == 0){
+
+				$("#_collectionDetail_info_link").load('${url.adminDataMgtPortlet.dictcollection_detail_info}&${portletNamespace}type=${constant.type_dictCollection}&${portletNamespace}collectionCode=${(dictCollection_dictCollection.collectionCode)!}');
+
+			} else if($(e.item).index() == 1){
 
 				$("#_collectionDetail_dictItem_link").load('${url.adminDataMgtPortlet.dictcollection_detail_dictitem}&${portletNamespace}type=${constant.type_dictCollection}&${portletNamespace}collectionCode=${(dictCollection_dictCollection.collectionCode)!}');
+
+			} else if($(e.item).index() == 2){
+
+				$("#_collectionDetail_formTemplate_link").load('${url.adminDataMgtPortlet.dictcollection_detail_formtemplate}&${portletNamespace}type=${constant.type_dictCollection}&${portletNamespace}collectionCode=${(dictCollection_dictCollection.collectionCode)!}');
 
 			}
 
 		}
 
     });
+    
+    $("#_collectionDetail_tabstrip").data("kendoTabStrip").select(1);
 
 });
 </script>

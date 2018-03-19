@@ -33,39 +33,54 @@
 					<p>#: partName # #if (required){#<span style="color: red;">&nbsp;*</span>#}#</p>
 					<p>Kiểu thành phần:
 						#if (partType == "1"){
-								#Giấy tờ nộp vào#
-						} else if (partType == "2"){
-							#Giấy tờ kết quả xử lý#
-						}#
-					</p>
-					<p>Mô tả: #: partTip #</p>
-				</div>
-			</div>
-		</li>
-	</script>
+						#Giấy tờ nộp vào#
+					} else if (partType == "2"){
+					#Giấy tờ kết quả xử lý#
+				}#
+			</p>
+			<p>Mô tả: #: partTip #</p>
+		</div>
+	</div>
+</li>
+</script>
 </div>
 
 <script type="text/javascript">
+	var dossierTemplatePartDataSource;
 	(function($){
-		var dossierTemplatePartDataSource = new kendo.data.DataSource({
+		dossierTemplatePartDataSource = new kendo.data.DataSource({
 			transport: {
 				read: function(options) {
-					$.ajax({
-						url: "${api.server}" + "/dossiertemplates/" + options.data.dossierTemplateId + "/parts",
-						type: "GET",
-						dataType: "json",
-						headers: {"groupId": ${groupId}},
-						data: {
-							keywords: options.data.keywords,
-							page: options.data.page,
-							pageSize: options.data.pageSize
-						},
-						success: function(result) {
-							options.success(result);
+					console.log("FISRT Loadddd");
+					var dossierTemplateId = options.data.dossierTemplateId;
+					if(dossierTemplateId){
+						$.ajax({
+							url: "${api.server}" + "/dossiertemplates/" + dossierTemplateId  + "/parts",
+							type: "GET",
+							dataType: "json",
+							headers: {"groupId": ${groupId}},
+							data: {
+								keywords: options.data.keywords,
+								page: options.data.page,
+								pageSize: options.data.pageSize
+							},
+							success: function(result) {
+								console.log("Success Loadddd");
+								if(result.data){
+									options.success(result);
+								}else {
+									options.success({
+										total : 0,
+										data : []
+									});
+								}
+								
 
-							dossierTemplatePartDataSource.sort({ field: "partNo", dir: "asc" });
-						}
-					});
+								/*dossierTemplatePartDataSource.sort({ field: "partNo", dir: "asc" });*/
+							}
+						});
+					}
+					
 				},
 				destroy: function(options) {
 					$.ajax({
@@ -74,6 +89,7 @@
 						type: "DELETE",
 						headers: {"groupId": ${groupId}},
 						success: function(result) {
+
 							options.success(result);
 							notification.show({
 								message: "Yêu cầu được thực hiện thành công"
@@ -112,7 +128,7 @@
 		var localIndex = 0;
 		$("#dossier_template_part_listview").kendoListView({
 			dataSource: dossierTemplatePartDataSource,
-			autoBind: false,
+			autoBind : false,
 			template: function(data){
 				var _pageSize = dossierTemplatePartDataSource.pageSize();
 				localIndex++;
@@ -148,6 +164,8 @@
 
 		$(document).on("click", ".btn-edit-dossier-template-part", function(event){
 			event.preventDefault();
+			console.log("Edit template part");
+
 			$("#dossiertemplate_part_container").hide();
 			$("#dossiertemplate_part_form_container").show();
 
@@ -159,6 +177,7 @@
 			var indexDossierTemplateSelected = dossierTemplateDatasource.select().index(),
 			dossierTemplateSelected = dossierTemplateDatasource.dataSource.view()[indexDossierTemplateSelected];
 			var formScript, formReport, sampleData;
+
 			$.ajax({
 				url: "${api.server}" + "/dossiertemplates/" + dossierTemplateSelected.id + "/parts/" + dataItem.partNo + "/formscript",
 				type: "GET",
@@ -189,7 +208,7 @@
 					sampleData = result.value;
 				}
 			});
-
+			console.log(dataItem);
 			var viewModel = kendo.observable({
 				partNo: dataItem.partNo,
 				partName: dataItem.partName,
@@ -201,6 +220,8 @@
 				formScript: formScript,
 				formReport: formReport,
 				sampleData: sampleData,
+				typeCode : dataItem.typeCode,
+				deliverableAction : dataItem.deliverableAction
 			});
 
 			kendo.bind($("#dossier_template_part_model"), viewModel);
@@ -219,6 +240,8 @@
 				fileTemplateNo : "",
 				required : "",
 				esign : "",
+				typeCode : "",
+				deliverableAction : ""
 			});
 
 			kendo.bind($("#dossier_template_part_model"), viewModel);

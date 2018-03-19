@@ -1,29 +1,24 @@
 package org.opencps.dossiermgt.scheduler;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Base64;
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
-import org.opencps.communication.model.ServerConfig;
-import org.opencps.communication.service.ServerConfigLocalServiceUtil;
-import org.opencps.dossiermgt.model.DossierAction;
-import org.opencps.dossiermgt.model.DossierSync;
-import org.opencps.dossiermgt.service.DossierActionLocalServiceUtil;
-import org.opencps.dossiermgt.service.DossierSyncLocalServiceUtil;
+import org.opencps.auth.utils.APIDateTimeUtils;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 
-import com.liferay.portal.kernel.dao.orm.QueryUtil;
+import com.liferay.portal.kernel.json.JSONArray;
+import com.liferay.portal.kernel.json.JSONException;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
+import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.messaging.BaseSchedulerEntryMessageListener;
@@ -37,172 +32,169 @@ import com.liferay.portal.kernel.scheduler.TriggerFactory;
 import com.liferay.portal.kernel.scheduler.TriggerFactoryUtil;
 import com.liferay.portal.kernel.service.CompanyLocalServiceUtil;
 import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.servlet.HttpMethods;
+import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.Validator;
 
 @Component(immediate = true, service = DossierSyncScheduler.class)
 public class DossierSyncScheduler extends BaseSchedulerEntryMessageListener {
-	private final String baseUrl = "http://localhost:8080/o/rest/v2/";
-	private final String username = "test@liferay.com";
-	private final String password = "test";
-	private final String serectKey = "OPENCPSV2";
 
 	@Override
 	protected void doReceive(Message message) throws Exception {
-		_log.info("OpenCPS Sync DOSSIERS.....");
+
+		_log.info("OpenCPS SYNC DOSSIERS IS  : " + APIDateTimeUtils.convertDateToString(new Date()));
 
 		Company company = CompanyLocalServiceUtil.getCompanyByMx(PropsUtil.get(PropsKeys.COMPANY_DEFAULT_WEB_ID));
 		ServiceContext serviceContext = new ServiceContext();
 		serviceContext.setCompanyId(company.getCompanyId());
 
-		List<DossierSync> dossierSyncs = DossierSyncLocalServiceUtil.getDossierSyncs(QueryUtil.ALL_POS,
-				QueryUtil.ALL_POS);
+		InvokeREST rest = new InvokeREST();
 
-		for (DossierSync sync : dossierSyncs) {
+		// Get all SERVER NO need to DOSSIER sync to
 
-			ServerConfig server = ServerConfigLocalServiceUtil.getByCode(sync.getServerNo());
+		HashMap<String, String> properties = new HashMap<String, String>();
 
-			long serGroupId = 0l;
+		String serverConfigEndpoint = "serverconfigs";
 
-			DossierAction actionSyn = DossierActionLocalServiceUtil.getByNextActionId(sync.getDossierId(), 0l);
+		JSONObject resServerConfig = rest.callAPI(0l, HttpMethods.GET, "application/json",
+				RESTFulConfiguration.SERVER_PATH_BASE, serverConfigEndpoint, RESTFulConfiguration.SERVER_USER,
+				RESTFulConfiguration.SERVER_PASS, properties, serviceContext);
 
-			if (Validator.isNotNull(server)) {
-				serGroupId = server.getGroupId();
+		List<String> lsServerNo = getListServerNo(resServerConfig);
+
+		for (String serverNo : lsServerNo) {
+
+			String dossierSyncEndpoint = "dossiersyncs/server/" + serverNo;
+
+			JSONObject resDossierSync = rest.callAPI(0l, HttpMethods.GET, "application/json",
+					RESTFulConfiguration.CLIENT_PATH_BASE, dossierSyncEndpoint, RESTFulConfiguration.CLIENT_USER,
+					RESTFulConfiguration.CLIENT_PASS, properties, serviceContext);
+
+			if (resDossierSync.getInt(RESTFulConfiguration.STATUS) == 200) {
+				
+				_log.info("DOSSIER_SYN_"+resDossierSync);
+
+				JSONObject jsData = JSONFactoryUtil
+						.createJSONObject(resDossierSync.getString(RESTFulConfiguration.MESSAGE));
+
+				JSONArray jsArrayData = JSONFactoryUtil.createJSONArray(jsData.getString("data"));
+
+				// Grouping DossierSync by DossierId and order by SyncMethod
+				Map<Long, SortedMap<Integer, JSONObject>> dossierSyncs = new TreeMap<Long, SortedMap<Integer, JSONObject>>();
+			
+				for (int i = 0; i < jsArrayData.length(); i++) {
+
+					JSONObject object = jsArrayData.getJSONObject(i);
+					long dossierSyncId = GetterUtil.getLong(object.get("dossierSyncId"));
+					int method = GetterUtil.getInteger(object.get("method"));
+					
+					if(dossierSyncs.containsKey(dossierSyncId)){
+						SortedMap<Integer, JSONObject> temp = dossierSyncs.get(dossierSyncId);
+						temp.put(method, object);
+					}else{
+						SortedMap<Integer, JSONObject> temp = new TreeMap<Integer, JSONObject>();
+						temp.put(method, object);
+						dossierSyncs.put(dossierSyncId, temp);
+					}
+				}
+				
+				ArrayList<DossierSyncOrderedModel> origin = DossierSyncUtils.convertToModel(jsArrayData);
+				
+				DossierSyncUtils.orderSync(origin);
+				
+				for (DossierSyncOrderedModel elm : origin) {
+					System.out.println("dossierId_" + elm.getDossierId() + "_method_" + elm.getMethodId());
+					
+					try {
+
+						long dossierSyncId = elm.getDossierSyncId();
+
+						String serverConfigDetail = "serverconfigs/" + serverNo;
+
+						JSONObject resServerDetail = rest.callAPI(0l, HttpMethods.GET, "application/json",
+								RESTFulConfiguration.SERVER_PATH_BASE, serverConfigDetail,
+								RESTFulConfiguration.SERVER_USER, RESTFulConfiguration.SERVER_PASS, properties,
+								serviceContext);
+
+						long serverGroupId = getGroupId(resServerDetail);
+
+						String doDossierSyncEnpoint = "dossiersyncs/" + dossierSyncId + "/sending";
+						
+						//call to rest API sync
+						rest.callAPI(serverGroupId, HttpMethods.GET, "application/json",
+								RESTFulConfiguration.CLIENT_PATH_BASE, doDossierSyncEnpoint,
+								RESTFulConfiguration.CLIENT_USER, RESTFulConfiguration.CLIENT_PASS, properties,
+								serviceContext);
+
+					} catch (Exception e) {
+						//e.printStackTrace();
+						
+						_log.info("Can't Sync DossierSyncId = " + elm.getDossierSyncId());
+					}
+				}
+
 			}
-
-			doSync(serGroupId, actionSyn.getActionCode(), actionSyn.getActionUser(), actionSyn.getActionNote(), 0l,
-					sync.getDossierReferenceUid());
 		}
+		
+		_log.info("OpenCPS SYNC DOSSIERS HAS BEEN DONE : " + APIDateTimeUtils.convertDateToString(new Date()));
 
 	}
 
-	private void doSync(long groupId, String actionCode, String actionUser, String actionNote, long assignUserId,
-			String refId) {
+	private List<String> getListServerNo(JSONObject response) {
+		List<String> lsServer = new ArrayList<>();
+
 		try {
-			String path = "dossiers/" + refId + "/actions";
-			URL url = new URL(baseUrl + path);
 
-			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			if (response.getInt(RESTFulConfiguration.STATUS) == 200) {
 
-			String authString = username + ":" + password;
+				JSONObject jsData = JSONFactoryUtil.createJSONObject(response.getString(RESTFulConfiguration.MESSAGE));
 
-			String authStringEnc = new String(Base64.getEncoder().encodeToString(authString.getBytes()));
-			conn.setRequestProperty("Authorization", "Basic " + authStringEnc);
+				JSONArray jsArrayData = JSONFactoryUtil.createJSONArray(jsData.getString("data"));
 
-			conn.setRequestMethod("POST");
-			conn.setDoInput(true);
-			conn.setDoOutput(true);
-			conn.setRequestProperty("Accept", "application/json");
-			conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-			conn.setRequestProperty("groupId", String.valueOf(groupId));
+				for (int i = 0; i < jsArrayData.length(); i++) {
+					JSONObject elm = jsArrayData.getJSONObject(i);
 
-			Map<String, Object> params = new LinkedHashMap<>();
-			params.put("actionCode", actionCode);
-			params.put("actionUser", actionUser);
-			params.put("actionNote", actionNote);
-			params.put("assignUserId", assignUserId);
-			params.put("isSynAction", 1);
-
-			StringBuilder postData = new StringBuilder();
-			for (Map.Entry<String, Object> param : params.entrySet()) {
-				if (postData.length() != 0)
-					postData.append('&');
-				postData.append(java.net.URLEncoder.encode(param.getKey(), "UTF-8"));
-				postData.append('=');
-				postData.append(java.net.URLEncoder.encode(String.valueOf(param.getValue()), "UTF-8"));
-			}
-
-			byte[] postDataBytes = postData.toString().getBytes("UTF-8");
-
-			conn.setRequestProperty("Content-Length", String.valueOf(postDataBytes.length));
-
-			conn.getOutputStream().write(postDataBytes);
-
-			if (conn.getResponseCode() != 200) {
-				throw new RuntimeException("Failed : HTTP error code : " + conn.getResponseCode());
-			} else {
-				resetDossier(groupId, refId);
-			}
-
-			BufferedReader br = new BufferedReader(new InputStreamReader((conn.getInputStream())));
-
-			String output;
-
-			StringBuffer sb = new StringBuffer();
-
-			while ((output = br.readLine()) != null) {
-				sb.append(output);
+					if (Validator.isNotNull(elm.getString("serverNo"))) {
+						lsServer.add(elm.getString("serverNo"));
+					}
+				}
 
 			}
 
-			System.out.println(sb.toString());
-
-			conn.disconnect();
-
-		} catch (MalformedURLException e) {
-
+		} catch (JSONException e) {
 			e.printStackTrace();
-		} catch (IOException e) {
-
-			e.printStackTrace();
-
 		}
+
+		return lsServer;
 	}
+	
+	
 
-	private void resetDossier(long groupId, String refId) {
+	private long getGroupId(JSONObject response) {
+		long groupId = 0l;
+
 		try {
-			String path = "dossiers/" + refId + "/reset";
-			URL url = new URL(baseUrl + path);
 
-			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			if (response.getInt(RESTFulConfiguration.STATUS) == 200) {
 
-			String authString = username + ":" + password;
-
-			String authStringEnc = new String(Base64.getEncoder().encodeToString(authString.getBytes()));
-			conn.setRequestProperty("Authorization", "Basic " + authStringEnc);
-
-			conn.setRequestMethod("GET");
-			conn.setDoInput(true);
-			conn.setDoOutput(true);
-			conn.setRequestProperty("Accept", "application/json");
-			conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-			conn.setRequestProperty("groupId", String.valueOf(groupId));
-
-			if (conn.getResponseCode() != 200) {
-				throw new RuntimeException("Failed : HTTP error code : " + conn.getResponseCode());
+				JSONObject jsData = JSONFactoryUtil.createJSONObject(response.getString(RESTFulConfiguration.MESSAGE));
+				groupId = jsData.getLong("groupId");
 			}
 
-			BufferedReader br = new BufferedReader(new InputStreamReader((conn.getInputStream())));
-
-			String output;
-
-			StringBuffer sb = new StringBuffer();
-
-			while ((output = br.readLine()) != null) {
-				sb.append(output);
-
-			}
-
-			System.out.println(sb.toString());
-
-			conn.disconnect();
-
-		} catch (MalformedURLException e) {
-
-			e.printStackTrace();
-		} catch (IOException e) {
-
-			e.printStackTrace();
-
+		} catch (Exception e) {
+			// TODO: handle exception
 		}
+
+		return groupId;
 	}
 
 	@Activate
 	@Modified
 	protected void activate() {
 		schedulerEntryImpl.setTrigger(
-				TriggerFactoryUtil.createTrigger(getEventListenerClass(), getEventListenerClass(), 1, TimeUnit.MINUTE));
+				TriggerFactoryUtil.createTrigger(getEventListenerClass(), getEventListenerClass(), 45, TimeUnit.SECOND));
 		_schedulerEngineHelper.register(this, schedulerEntryImpl, DestinationNames.SCHEDULER_DISPATCH);
 	}
 

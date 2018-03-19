@@ -1,10 +1,8 @@
-<#if (Request)??>
 <#include "init.ftl">
-</#if>
 
 <div class="row">
 
-	<!-- left -->
+	<!— left —>
 	<div class="col-md-3 panel P0">
 
 		<!--search-->
@@ -21,17 +19,17 @@
 					<i class="fa fa-search" aria-hidden="true"></i>
 	
 				</div>
-	
+
 			</div>
 	
-			<a data-toggle="modal" class="btn btn-active image-preview-input btn-block MT15"
+			<span data-toggle="modal" class="btn btn-active btn-block MT15"
 				href="${url.adminDataMgtPortlet.dictcollection_create_dictcollection}" data-target="#modal"> 
 				<i class="fa fa-book" aria-hidden="true"></i>
 				<span class="p-xxs" >Tổng số</span> 
 				<span id="dictCollectionCounterList">0</span>
 				<span class="p-xxs" >Nhóm danh muc</span> 
 				<i class="fa fa-plus-circle"></i> 
-			</a>
+			</span>
 			
 		</div>
 				
@@ -40,13 +38,13 @@
 		
 		<script type="text/x-kendo-tmpl" id="_collection_template">
 		
-			<li class="clearfix PT20 PR0 PB20 PL15" data-pk="#: id #">
+			<li class="clearfix PT10 PR0 PB10 PL10">
 	
 				<div class="col-sm-2 clearfix PL0 PR0">
 					
 					<a href="javascript:;" >
 								
-						<i style="font-size: 30px;padding: 5px;" class="fa fa-book" aria-hidden="true"></i>
+						<i class="fa fa-book fs26 P5" aria-hidden="true"></i>
 							
 					</a>
 						
@@ -78,7 +76,7 @@
 		</script>
 
 	</div>
-	<!-- end left-->
+	<!— end left —>
 
 	<!--load right-->
 	<div class="col-md-9 " id="_collection_right-page"> </div>
@@ -98,8 +96,8 @@
 			logic: "or",
 			filters: [
 				
-				{ field: "collectionName", operator: "contains", 	value: $("#_collection_keySearch").val() },
-				{ field: "collectionCode", operator: "contains", 	value: $("#_collection_keySearch").val() }
+				{ field: "collectionName", operator: "contains", 	value: $("#_collection_keySearch").val().trim() },
+				{ field: "collectionCode", operator: "contains", 	value: $("#_collection_keySearch").val().trim() }
 			]
 		});
 		
@@ -109,7 +107,7 @@
 	
 	(function($) {
 	
-		var _collection_BaseUrl = "${api.server}/dictcollections";
+		var _collection_BaseUrl = "${api.endpoint}/dictcollections";
 
 		var _collection_dataSource = new kendo.data.DataSource({
 			
@@ -131,6 +129,8 @@
 						success: function(result) {
 						
 							$('#dictCollectionCounterList').html(result.total);
+							
+							result["data"] = result.total==0 ? []: result["data"];
 							options.success(result);
 							
 						},
@@ -144,28 +144,41 @@
 				},
 				destroy: function(options) {
 					
-					$.ajax({
-						url: _collection_BaseUrl + "/" + options.data.collectionCode,
-						type: 'DELETE',
-						headers: {
-							"groupId": ${groupId}
-						},
-						success: function(result) {
+					var confirmWindown = showWindowConfirm('#template-confirm','Cảnh báo','Bạn có chắc muốn xóa bản ghi này?', $("#_collection_listView") );
+					
+					confirmWindown.then(function(confirmed){
+					
+						if(confirmed){
+	
+							$.ajax({
+								url: _collection_BaseUrl + "/" + options.data.collectionCode,
+								type: 'DELETE',
+								headers: {
+									"groupId": ${groupId}
+								},
+								success: function(result) {
+									
+									$("#_collection_hidden_new_id").val("0");
+									options.success();
+									$('#dictCollectionCounterList').html($("#_collection_listView").getKendoListView().dataSource.total());
+									showMessageToastr("success", 'Yêu cầu của bạn được xử lý thành công!');
+									
+								},
+								error: function(xhr, textStatus, errorThrown) {
+								
+									$("#_collection_listView").getKendoListView().dataSource.error();
+									showMessageByAPICode(xhr.status);
+								
+								}
+				
+							});
+	
+						} else{
 							
-							$("#_collection_hidden_new_id").val("0");
-							options.success();
-							$('#dictCollectionCounterList').html($("#_collection_listView").getKendoListView().dataSource.total());
-							showMessageToastr("success", 'Yêu cầu của bạn được xử lý thành công!');
-							
-						},
-						error: function(xhr, textStatus, errorThrown) {
-						
-							$("#_collection_listView").getKendoListView().dataSource.error();
-							showMessageByAPICode(xhr.status);
-						
+							options.error();
 						}
-		
 					});
+					
 				},
 				parameterMap: function(options, operation) {
 					
@@ -180,7 +193,21 @@
 				data: "data",
 				total: "total",
 				model: {
-					id: "collectionCode"
+					id: "collectionCode",
+					fields: {
+						
+						collectionCode: {
+							type: "string",
+							editable: false,
+							nullable: true
+						},
+						collectionName: {
+							type: "string"
+						},
+						description: {
+							type: "string"
+						}
+					}
 				}
 			},
 			error: function(e) {
@@ -194,16 +221,6 @@
 		$("#_collection_listView").kendoListView({
 		
 			remove: function(e) {
-				
-				if (!confirm("Xác nhận xoá " + e.model.get("collectionName") + "?")) {
-					
-					e.preventDefault();
-				
-				} else {
-
-					$("#_collection_hidden_new_id").val("0");
-
-				}
 				
 			},
 			
@@ -222,8 +239,8 @@
 				logic: "or",
 				filters: [
 					
-					{ field: "collectionName", operator: "contains", 	value: $("#_collection_keySearch").val() },
-					{ field: "collectionCode", operator: "contains", 	value: $("#_collection_keySearch").val() }
+					{ field: "collectionName", operator: "contains", 	value: $("#_collection_keySearch").val().trim() },
+					{ field: "collectionCode", operator: "contains", 	value: $("#_collection_keySearch").val().trim() }
 				]
 			
 			}
@@ -236,7 +253,7 @@
 			
 			var children = _collection_listView.element.children();
 			
-			var index = $("#_collection_hidden_new_id").val();
+			var index = $("#_collection_hidden_new_id").val().trim();
 			
 			for (var x = 0; x < children.length; x++) {
 				

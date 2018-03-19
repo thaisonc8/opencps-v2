@@ -13,6 +13,7 @@ import org.opencps.dossiermgt.model.Dossier;
 import org.opencps.dossiermgt.model.DossierAction;
 import org.opencps.dossiermgt.model.ProcessStep;
 import org.opencps.dossiermgt.service.DossierActionLocalServiceUtil;
+import org.opencps.dossiermgt.service.DossierLocalServiceUtil;
 import org.opencps.dossiermgt.service.ProcessStepLocalServiceUtil;
 
 import com.liferay.portal.kernel.search.Document;
@@ -27,8 +28,9 @@ public class DossierUtils {
 
 		for (Document doc : docs) {
 			DossierDataModel model = new DossierDataModel();
-
+			model.setDossierIdCTN(doc.get(DossierTerm.DOSSIER_ID+"CTN"));
 			model.setDossierId(GetterUtil.getInteger(doc.get(Field.ENTRY_CLASS_PK)));
+			model.setGroupId(GetterUtil.getInteger(doc.get(Field.GROUP_ID)));
 			model.setCreateDate(doc.get(Field.CREATE_DATE));
 			model.setModifiedDate(doc.get(Field.MODIFIED_DATE));
 			model.setReferenceUid(doc.get(DossierTerm.REFERENCE_UID));
@@ -38,11 +40,24 @@ public class DossierUtils {
 			model.setGovAgencyCode(doc.get(DossierTerm.GOV_AGENCY_CODE));
 			model.setGovAgencyName(doc.get(DossierTerm.GOV_AGENCY_NAME));
 			model.setApplicantName(doc.get(DossierTerm.APPLICANT_NAME));
+			model.setApplicantNote(doc.get(DossierTerm.APPLICANT_NOTE));
 			model.setApplicantIdType(doc.get(DossierTerm.APPLICANT_ID_TYPE));
 			model.setApplicantIdNo(doc.get(DossierTerm.APPLICANT_ID_NO));
 			model.setApplicantIdDate(doc.get(DossierTerm.APPLICANT_ID_DATE));
+			model.setAddress(doc.get(DossierTerm.ADDRESS));
+			model.setCityCode(doc.get(DossierTerm.CITY_CODE));
+			model.setCityName(doc.get(DossierTerm.CITY_NAME));
+			model.setDistrictCode(doc.get(DossierTerm.DISTRICT_CODE));
+			model.setDistrictName(doc.get(DossierTerm.DISTRICT_NAME));
+			model.setWardCode(doc.get(DossierTerm.WARD_CODE));
+			model.setWardName(doc.get(DossierTerm.WARD_NAME));
+			model.setContactName(doc.get(DossierTerm.CONTACT_NAME));
+			model.setContactTelNo(doc.get(DossierTerm.CONTACT_TEL_NO));
+			model.setContactEmail(doc.get(DossierTerm.CONTACT_EMAIL));
+			model.setDossierNote(doc.get(DossierTerm.DOSSIER_NOTE));
+			model.setSubmissionNote(doc.get(DossierTerm.SUBMISSION_NOTE));
+			model.setBriefNote(doc.get(DossierTerm.BRIEF_NOTE));
 			model.setDossierNo(doc.get(DossierTerm.DOSSIER_NO));
-			model.setApplicantNote(doc.get(DossierTerm.APPLICANT_NOTE));
 			model.setBriefNote(doc.get(DossierTerm.BRIEF_NOTE));
 			model.setSubmitDate(doc.get(DossierTerm.SUBMIT_DATE));
 			model.setReceiveDate(doc.get(DossierTerm.RECEIVE_DATE));
@@ -68,7 +83,15 @@ public class DossierUtils {
 			model.setPending(getPendding(GetterUtil.getLong(doc.get(Field.ENTRY_CLASS_PK))));
 			model.setOnline(doc.get(DossierTerm.ONLINE));
 			model.setHasPassword(doc.get(DossierTerm.PASSWORD));
-
+			model.setDossierTemplateNo(doc.get(DossierTerm.DOSSIER_TEMPLATE_NO));
+			model.setServerNo(doc.get(DossierTerm.SERVER_NO));
+			
+			model.setViaPostal(doc.get(DossierTerm.VIA_POSTAL));
+			model.setPostalAddress(doc.get(DossierTerm.POSTAL_ADDRESS));
+			model.setPostalCityCode(doc.get(DossierTerm.POSTAL_CITY_CODE));
+			model.setPostalCityName(doc.get(DossierTerm.POSTAL_CITY_NAME));
+			model.setPostalTelNo(doc.get(DossierTerm.POSTAL_TEL_NO));
+			
 			ouputs.add(model);
 		}
 
@@ -78,6 +101,14 @@ public class DossierUtils {
 	public static DossierDetailModel mappingForGetDetail(Dossier input) {
 
 		DossierDetailModel model = new DossierDetailModel();
+		
+		try {
+			Document dossierDoc = DossierLocalServiceUtil.getDossierById(input.getDossierId(), input.getCompanyId());
+			model.setDossierIdCTN(dossierDoc.get(DossierTerm.DOSSIER_ID+"CTN"));
+		} catch (Exception e) {
+			model.setDossierIdCTN("");
+		}
+		
 
 		model.setDossierId(GetterUtil.getInteger(input.getDossierId()));
 		model.setUserId(GetterUtil.getInteger(input.getUserId()));
@@ -168,7 +199,7 @@ public class DossierUtils {
 
 		model.setVisited(getVisisted(input.getPrimaryKey()));
 		model.setPending(getPendding(input.getPrimaryKey()));
-		model.setApplicantNote(getApplicationNote(input.getPrimaryKey()));
+		model.setApplicantNote(input.getApplicantNote());
 		model.setNotification(Boolean.toString(input.getNotification()));
 		model.setOnline(Boolean.toString(input.getOnline()));
 

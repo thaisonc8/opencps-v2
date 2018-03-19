@@ -1,16 +1,14 @@
-<#if (Request)??>
 <#include "init.ftl">
-</#if>
 
 <div class="row">
 
-	<!-- left -->
+	<!— left —>
 	<div class="col-md-3 panel P0">
 
 		<!--search-->
 		<div class="panel-body">
 	
-			<span id="_workingUnit_editWorkingUnit" class="btn btn-active image-preview-input btn-block"> 
+			<span id="_workingUnit_editWorkingUnit" class="btn btn-active btn-block"> 
 				<i class="fa fa-outdent" aria-hidden="true"></i>
 				<span class="p-xxs" >Tổng số</span> 
 				<span id="_workingUnit_CounterList">0</span>
@@ -33,19 +31,19 @@
 		
 		<script type="text/x-kendo-tmpl" id="_workingUnit_template">
 		
-			<li class="clearfix PT20 PR0 PB20 PL#:15+level*30#">
+			<li class="clearfix PT10 PR0 PB10 PL#:10+level*20#">
 	
-				<div class="col-sm-1 clearfix PL0 PR0">
+				<div class="col-sm-2 clearfix PL0 PR0">
 					
 					<a href="javascript:;" >
 						
-						<i style="padding: 3px 5px;" class="fa fa-outdent" aria-hidden="true"></i>
+						<i class="fa fa-outdent fs26 P5" aria-hidden="true"></i>
 							
 					</a>
 						
 				</div>
 					
-				<div class="col-sm-10 PL5">
+				<div class="col-sm-9 PL0">
 				
 					<strong class="btn-block">#= name #</strong>
 					<span class="btn-block">#= govAgencyCode #</span>
@@ -71,7 +69,7 @@
 		</script>
 
 	</div>
-	<!-- end left-->
+	<!— end left —>
 
 	<!--load right-->
 	<div class="col-md-9 " id="_workingUnit_right-page"> </div>
@@ -90,10 +88,10 @@
 			logic: "or",
 			filters: [
 				
-				{ field: "name", operator: "contains", value: $("#_workingUnit_keySearch").val() },
-				{ field: "govAgencyCode", operator: "contains", value: $("#_workingUnit_keySearch").val() },
-				{ field: "telNo", operator: "contains", value: $("#_workingUnit_keySearch").val() },
-				{ field: "email", operator: "contains", value: $("#_workingUnit_keySearch").val() }
+				{ field: "name", operator: "contains", value: $("#_workingUnit_keySearch").val().trim() },
+				{ field: "govAgencyCode", operator: "contains", value: $("#_workingUnit_keySearch").val().trim() },
+				{ field: "telNo", operator: "contains", value: $("#_workingUnit_keySearch").val().trim() },
+				{ field: "email", operator: "contains", value: $("#_workingUnit_keySearch").val().trim() }
 			]
 		});
 		
@@ -101,7 +99,7 @@
 	
 	(function($) {
 	
-		var _workingUnit_BaseUrl = "${api.server}/workingunits";
+		var _workingUnit_BaseUrl = "${api.endpoint}/workingunits";
 		
 		var _workingUnit_dataSource = new kendo.data.DataSource({
 			
@@ -117,13 +115,11 @@
 						headers: {
 							"groupId": ${groupId}
 						},
-						data: {
-							sort: 'treeIndex',
-							order: false
-						},
+						data: {},
 						success: function(result) {
-						
+							
 							$('#_workingUnit_CounterList').html(result.total);
+							result["data"] = result.total==0 ? []: result["data"];
 							options.success(result);
 							
 						},
@@ -158,24 +154,30 @@
 						type: 'POST',
 						dataType: 'json',
 						contentType: 'application/x-www-form-urlencoded; charset=utf-8',
+						beforeSend: function( xhr ) {
+							$("#_workingUnitDetail_submitBtn").button('loading');
+						},
 						success: function(data, textStatus, xhr) {
 							
 							_workingUnitDetail_uploadLogoFileEntry(document.getElementById("_workingUnitDetail_logoFileEntryId"), data.workingUnitId);
 
-							var dataSource = $("#_workingUnit_listView").getKendoListView().dataSource;
+							//var dataSource = $("#_workingUnit_listView").getKendoListView().dataSource;
 							
 							$("#_workingUnit_hidden_new_id").val(data.workingUnitId);
-							dataSource.error();
-							dataSource.pushUpdate(data);
-							$('#_workingUnit_CounterList').html(dataSource.total());
-							showMessageToastr("success", 'Yêu cầu của bạn được xử lý thành công!');
 							
+							$("#_workingUnit_listView").getKendoListView().dataSource.read();
+							
+							//dataSource.error();
+							//dataSource.pushUpdate(data);
+							//$('#_workingUnit_CounterList').html(dataSource.total());
+							showMessageToastr("success", 'Yêu cầu của bạn được xử lý thành công!');
+							//$("#_workingUnitDetail_submitBtn").button('reset');
 						},
 						error: function(xhr, textStatus, errorThrown) {
 							
 							$("#_workingUnit_listView").getKendoListView().dataSource.error();
 							showMessageByAPICode(xhr.status);
-						
+							$("#_workingUnitDetail_submitBtn").button('reset');
 						}
 					});
 					
@@ -201,55 +203,60 @@
 						type: 'PUT',
 						dataType: 'json',
 						contentType: 'application/x-www-form-urlencoded; charset=utf-8',
+						beforeSend: function( xhr ) {
+							$("#_workingUnitDetail_submitBtn").button('loading');
+						},
 						success: function(data, textStatus, xhr) {
 							
 							_workingUnitDetail_uploadLogoFileEntry(document.getElementById("_workingUnitDetail_logoFileEntryId"), data.workingUnitId);
 							
-							var dataSource = $("#_workingUnit_listView").getKendoListView().dataSource;
-							dataSource.pushUpdate(data);
-
-							$.map( dataSource.data(), function( obj, i ) {
-								
-								if(obj.workingUnitId == data.workingUnitId) {
-									
-									var listView = $("#_workingUnit_listView").data("kendoListView");
-									listView.select(listView.element.children()[i]);
-
-								}
-							});
+							$("#_workingUnit_listView").getKendoListView().dataSource.read();
 							showMessageToastr("success", 'Yêu cầu của bạn được xử lý thành công!');
-							
+							$("#_workingUnitDetail_submitBtn").button('reset');
 						},
 						error: function(xhr, textStatus, errorThrown) {
 							
 							$("#_workingUnit_listView").getKendoListView().dataSource.error();
 							showMessageByAPICode(xhr.status);
-						
+							$("#_workingUnitDetail_submitBtn").button('reset');
 						}
 					});
 				
 				},
 				destroy: function(options) {
 					
-					$.ajax({
-						url: _workingUnit_BaseUrl + "/" + options.data.workingUnitId,
-						type: 'DELETE',
-						success: function(result) {
+					var confirmWindown = showWindowConfirm('#template-confirm','Cảnh báo','Bạn có chắc muốn xóa bản ghi này?', $("#_workingUnit_listView") );
+					
+					confirmWindown.then(function(confirmed){
+					
+						if(confirmed){
+	
+							$.ajax({
+								url: _workingUnit_BaseUrl + "/" + options.data.workingUnitId,
+								type: 'DELETE',
+								success: function(result) {
+									
+									$("#_workingUnit_hidden_new_id").val("0");
+									options.success();
+									$('#_workingUnit_CounterList').html($("#_workingUnit_listView").getKendoListView().dataSource.total());
+									showMessageToastr("success", 'Yêu cầu của bạn được xử lý thành công!');
+									
+								},
+								error: function(xhr, textStatus, errorThrown) {
+								
+									$("#_workingUnit_listView").getKendoListView().dataSource.error();
+									showMessageByAPICode(xhr.status);
+								
+								}
+				
+							});
+	
+						} else{
 							
-							$("#_workingUnit_hidden_new_id").val("0");
-							options.success();
-							$('#_workingUnit_CounterList').html($("#_workingUnit_listView").getKendoListView().dataSource.total());
-							showMessageToastr("success", 'Yêu cầu của bạn được xử lý thành công!');
-							
-						},
-						error: function(xhr, textStatus, errorThrown) {
-						
-							$("#_workingUnit_listView").getKendoListView().dataSource.error();
-							showMessageByAPICode(xhr.status);
-						
+							options.error();
 						}
-		
 					});
+					
 				},
 				parameterMap: function(options, operation) {
 					
@@ -288,12 +295,6 @@
 		$("#_workingUnit_listView").kendoListView({
 		
 			remove: function(e) {
-				
-				if (!confirm("Xác nhận xoá " + e.model.get("name") + "?")) {
-			
-					e.preventDefault();
-				
-				}
 			
 			},
 			
@@ -312,10 +313,10 @@
 				logic: "or",
 				filters: [
 					
-					{ field: "name", operator: "contains", value: $("#_workingUnit_keySearch").val() },
-					{ field: "govAgencyCode", operator: "contains", value: $("#_workingUnit_keySearch").val() },
-					{ field: "telNo", operator: "contains", value: $("#_workingUnit_keySearch").val() },
-					{ field: "email", operator: "contains", value: $("#_workingUnit_keySearch").val() }
+					{ field: "name", operator: "contains", value: $("#_workingUnit_keySearch").val().trim() },
+					{ field: "govAgencyCode", operator: "contains", value: $("#_workingUnit_keySearch").val().trim() },
+					{ field: "telNo", operator: "contains", value: $("#_workingUnit_keySearch").val().trim() },
+					{ field: "email", operator: "contains", value: $("#_workingUnit_keySearch").val().trim() }
 				]
 			
 			}
@@ -371,9 +372,9 @@
 			
 			$("#_workingUnit_right-page").load(
 				'${url.adminWorkingUnitPortlet.working_unit_detail}'
-			);
-
-			$("#_workingUnit_listView .k-state-selected").removeClass("k-state-selected");
+				);
+				
+			$("#_workingUnit_listView").getKendoListView().clearSelection();
 			
 		});
 		

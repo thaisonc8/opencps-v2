@@ -123,28 +123,30 @@
 					read: function(options) {
 						console.log("options");
 						console.log(options);
-						if (options && options.data && options.data.serviceProcessId){
-							$.ajax({
-								url: "${api.server}" + "/serviceprocesses/" + options.data.serviceProcessId + "/steps",
-								type: "GET",
-								dataType: "json",
-								headers: {"groupId": ${groupId}},
-								data: {
-									keywords: options.data.keywords,
-									page: options.data.page,
-									pageSize: options.data.pageSize
-								},
-								success: function(result) {
+						
+						$.ajax({
+							url: "${api.server}" + "/serviceprocesses/" + options.data.serviceProcessId + "/steps",
+							type: "GET",
+							dataType: "json",
+							headers: {"groupId": ${groupId}},
+							data: {
+								keywords: options.data.keywords
+							},
+							success: function(result) {
+								if(result.data){
 									options.success(result);
-								},
-								error: function(result) {
-									options.error(result);
-									notification.show({
-										message: "Xẩy ra lỗi, vui lòng thử lại"
-									}, "error");
+								}else {
+									options.success({
+										"data" : [],
+										"total" : 0
+									});
 								}
-							});
-						}
+							},
+							error: function(result) {
+								options.error(result);
+							}
+						});
+
 					},
 					destroy: function(options) {
 						if (options && options.data && options.data.stepCode){
@@ -239,7 +241,22 @@
 					stepName: processStep.stepName,
 					sequenceNo: processStep.sequenceNo,
 					dossierStatus: processStep.dossierStatus,
-					dossierSubStatus: processStep.dossierSubStatus,
+					dossierSubStatus: function(e){
+
+						//console.log(processStep.dossierSubStatus);
+						//console.log($("#dossierSubStatus").val());
+						/*if($("#dossierSubStatus").val() && processStep.dossierSubStatus !== $("#dossierSubStatus").val()){
+							return $("#dossierSubStatus").val();
+						}else {
+							$("#dossierSubStatus").data("kendoComboBox").dataSource.read({
+								parent : processStep.dossierStatus
+							});
+						}*/
+						$("#dossierSubStatus").data("kendoComboBox").dataSource.read({
+							parent : processStep.dossierStatus
+						});
+						return processStep.dossierSubStatus;
+					},
 					editable: processStep.editable,
 					durationCount: processStep.durationCount,
 					customProcessUrl: processStep.customProcessUrl,

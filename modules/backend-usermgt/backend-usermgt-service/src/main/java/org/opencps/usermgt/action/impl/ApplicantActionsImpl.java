@@ -22,11 +22,11 @@ import com.liferay.portal.kernel.util.Validator;
 public class ApplicantActionsImpl implements ApplicantActions {
 
 	@Override
-	public Applicant register(ServiceContext context, String applicantName, String applicantIdType,
+	public Applicant register(ServiceContext context, long groupId, String applicantName, String applicantIdType,
 			String applicantIdNo, String applicantIdDate, String contactEmail, String password)
 			throws PortalException, SystemException {
 
-		Applicant applicant = ApplicantLocalServiceUtil.updateApplication(context, 0, applicantName, applicantIdType,
+		Applicant applicant = ApplicantLocalServiceUtil.updateApplication(context,groupId, 0, applicantName, applicantIdType,
 				applicantIdNo, applicantIdDate, StringPool.BLANK, StringPool.BLANK, StringPool.BLANK, StringPool.BLANK,
 				StringPool.BLANK, StringPool.BLANK, StringPool.BLANK, StringPool.BLANK, StringPool.BLANK, contactEmail,
 				StringPool.BLANK, password);
@@ -34,12 +34,12 @@ public class ApplicantActionsImpl implements ApplicantActions {
 		return applicant;
 	}
 
-	public Applicant register(ServiceContext context, String applicantName, String applicantIdType,
+	public Applicant register(ServiceContext context, long groupId,  String applicantName, String applicantIdType,
 			String applicantIdNo, String applicantIdDate, String contactEmail, String address, String cityCode,
 			String cityName, String districtCode, String districtName, String wardCode, String wardName,
 			String contactName, String contactTelNo, String password) throws PortalException, SystemException {
 
-		Applicant applicant = ApplicantLocalServiceUtil.updateApplication(context, 0l, applicantName, applicantIdType,
+		Applicant applicant = ApplicantLocalServiceUtil.updateApplication(context, groupId, 0l, applicantName, applicantIdType,
 				applicantIdNo, applicantIdDate, address, cityCode, cityName, districtCode, districtName, wardCode,
 				wardName, contactName, contactTelNo, contactEmail, StringPool.BLANK, password);
 
@@ -85,11 +85,16 @@ public class ApplicantActionsImpl implements ApplicantActions {
 	}
 
 	@Override
-	public Applicant updateApplicant(ServiceContext context, long applicantId, String applicantName, String address, String cityCode,
+	public String getApplicantByUserId(ServiceContext serviceContext) throws PortalException {
+		return JSONFactoryUtil.looseSerialize(ApplicantLocalServiceUtil.fetchByMappingID(serviceContext.getUserId()));
+	}
+	
+	@Override
+	public Applicant updateApplicant(ServiceContext context,long groupId, long applicantId, String applicantName, String address, String cityCode,
 			String cityName, String districtCode, String districtName, String wardCode, String wardName,
 			String contactName, String contactTelNo, String contactEmail) throws PortalException {
 
-		Applicant applicant = ApplicantLocalServiceUtil.updateApplication(context, applicantId, applicantName,
+		Applicant applicant = ApplicantLocalServiceUtil.updateApplication(context, groupId,  applicantId, applicantName,
 				StringPool.BLANK, StringPool.BLANK, StringPool.BLANK, address, cityCode, cityName, districtCode,
 				districtName, wardCode, wardName, contactName, contactTelNo, contactEmail, StringPool.BLANK,
 				StringPool.BLANK);
@@ -98,9 +103,9 @@ public class ApplicantActionsImpl implements ApplicantActions {
 	}
 
 	@Override
-	public Applicant updateProfile(ServiceContext context, long applicantId, String profile) throws PortalException {
+	public Applicant updateProfile(ServiceContext context, long groupId, long applicantId, String profile) throws PortalException {
 		// TODO Auto-generated method stub
-		Applicant applicant = ApplicantLocalServiceUtil.updateApplication(context, applicantId, StringPool.BLANK,
+		Applicant applicant = ApplicantLocalServiceUtil.updateApplication(context, groupId, applicantId, StringPool.BLANK,
 				StringPool.BLANK, StringPool.BLANK, StringPool.BLANK, StringPool.BLANK, StringPool.BLANK,
 				StringPool.BLANK, StringPool.BLANK, StringPool.BLANK, StringPool.BLANK, StringPool.BLANK,
 				StringPool.BLANK, StringPool.BLANK, StringPool.BLANK, profile, StringPool.BLANK);
@@ -134,7 +139,14 @@ public class ApplicantActionsImpl implements ApplicantActions {
 		}
 
 	}
+	
+	@Override
+	public Applicant getApplicantByMappingUserId(long userId) throws PortalException {
+		return ApplicantLocalServiceUtil.fetchByMappingID(userId);
+	}
 
 	Log _log = LogFactoryUtil.getLog(ApplicantActionsImpl.class);
+
+	
 
 }

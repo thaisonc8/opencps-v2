@@ -22,10 +22,10 @@
 <#assign currentURL = themeDisplay.getURLCurrent() />
 <#assign request = themeDisplay.getRequest() />
 <#assign portalURL = (themeDisplay.getPortalURL())!>
-
 <#assign url = (Request.url)!>
 <#assign api = (Request.api)!>
 <#assign constant = (Request.constant)!>
+<#assign registrationtemplates = (Request.registrationtemplates)!>
 
 
 <!--INIT EMPLOYEE-->
@@ -50,7 +50,7 @@
 <#assign params = Request.params?eval>
 </#if>
 <#if Request.constants??>
-<#assign constants = Request.constants?eval>
+<#assign constants = Request.constants>
 </#if>
 
 <!--INIT  WORKING UNIT-->
@@ -111,8 +111,8 @@
 <#assign param = Request.param?eval>
 </#if>
 
-<#if Request.constant??>
-<#assign constant = Request.constant?eval>
+<#if Request.constants??>
+<#assign constant = Request.constants?eval>
 </#if>
 
 <#if Request.workspace_jobposes??>

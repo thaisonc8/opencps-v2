@@ -27,6 +27,8 @@ import org.opencps.datamgt.service.base.DictCollectionLocalServiceBaseImpl;
 
 import com.liferay.asset.kernel.exception.DuplicateCategoryException;
 import com.liferay.portal.kernel.exception.NoSuchUserException;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.search.BooleanClauseOccur;
 import com.liferay.portal.kernel.search.BooleanQuery;
@@ -51,6 +53,7 @@ import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Validator;
 
 import aQute.bnd.annotation.ProviderType;
+
 import org.opencps.auth.api.BackendAuthImpl;
 import org.opencps.auth.api.exception.NotFoundException;
 import org.opencps.auth.api.exception.UnauthenticationException;
@@ -86,6 +89,7 @@ public class DictCollectionLocalServiceImpl extends DictCollectionLocalServiceBa
 	 * org.opencps.datamgt.service.DictCollectionLocalServiceUtil} to
 	 * access the dict collection local service.
 	 */
+	private static Log _log = LogFactoryUtil.getLog(DictCollectionLocalServiceImpl.class);
 	/**
 	 * @author binhth
 	 * @param userId
@@ -108,7 +112,7 @@ public class DictCollectionLocalServiceImpl extends DictCollectionLocalServiceBa
 			throws DuplicateCategoryException, UnauthenticationException, UnauthorizationException,
 			NoSuchUserException {
 
-		DictCollection dictColl = dictCollectionPersistence.fetchByF_dictCollectionCode(collectionCode.toUpperCase(), groupId);
+		DictCollection dictColl = dictCollectionPersistence.fetchByF_dictCollectionCode(collectionCode, groupId);
 
 		if (Validator.isNotNull(dictColl)) {
 
@@ -137,7 +141,7 @@ public class DictCollectionLocalServiceImpl extends DictCollectionLocalServiceBa
 
 		if (Validator.isNotNull(collectionCode)) {
 
-			collectionCode = collectionCode.toUpperCase();
+			collectionCode = collectionCode;
 
 		}
 
@@ -259,7 +263,7 @@ public class DictCollectionLocalServiceImpl extends DictCollectionLocalServiceBa
 
 		DictCollection dictCollection = dictCollectionPersistence.fetchByPrimaryKey(dictCollectionId);
 
-		DictCollection dictColl = dictCollectionPersistence.fetchByF_dictCollectionCode(collectionCode.toUpperCase(),
+		DictCollection dictColl = dictCollectionPersistence.fetchByF_dictCollectionCode(collectionCode,
 				dictCollection.getGroupId());
 
 		if ( Validator.isNotNull(dictColl) && dictColl.getDictCollectionId() != dictCollectionId) {
@@ -274,7 +278,7 @@ public class DictCollectionLocalServiceImpl extends DictCollectionLocalServiceBa
 
 		if (Validator.isNotNull(collectionCode)) {
 
-			collectionCode = collectionCode.toUpperCase();
+			collectionCode = collectionCode;
 
 		}
 
@@ -309,7 +313,7 @@ public class DictCollectionLocalServiceImpl extends DictCollectionLocalServiceBa
 			groupId = 0;
 		}
 
-		return dictCollectionPersistence.fetchByF_dictCollectionCode(collectionCode.toUpperCase(), groupId);
+		return dictCollectionPersistence.fetchByF_dictCollectionCode(collectionCode, groupId);
 
 	}
 	

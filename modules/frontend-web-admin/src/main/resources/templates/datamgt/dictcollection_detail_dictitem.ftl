@@ -1,15 +1,14 @@
-<#if (Request)??>
 <#include "init.ftl">
-</#if>
-<div class="row MT20">
+
+<div class="row">
 		
 	<div class="col-xs-4 col-sm-4">
 	
-		<span data-toggle="modal" class="btn btn-active image-preview-input btn-block"
-			href="${url.adminDataMgtPortlet.dictcollection_create_dictitem}&${portletNamespace}type=${constant.type_dictCollection}&${portletNamespace}collectionCode=${(dictCollection_dictCollection.collectionCode)!}" data-target="#modal"> 
+		<span data-toggle="modal" class="btn btn-active btn-block"
+			href="${url.adminDataMgtPortlet.dictcollection_create_dictitem}&${portletNamespace}type=${constant.type_dictCollection}&${portletNamespace}collectionCode=${(dictCollection_dictCollection.collectionCode)!}" data-target="#modal-lg"> 
 			<i class="fa fa-book" aria-hidden="true"></i>
 			
-			<span class="p-xxs" >Thêm dữ liệu danh mục</span> 
+			<span class="p-xxs" >Thêm mục</span> 
 			<i class="fa fa-plus-circle"></i> 
 		</span>
 	
@@ -70,7 +69,7 @@
 
 <script type="text/x-kendo-tmpl" id="_collectionSub_dictItem_template">
 	
-	<li class="PT10 PB10 line-dashed">
+	<li class="PT5 PB5 line-dashed">
 	
 		<div class="row M0 eq-height" >
 		
@@ -80,7 +79,7 @@
 
 					<a href="javascript:;">
 					
-						<span>#:itemIndex#</span>
+						<span>#:sibling#</span>
 						
 					</a>
 
@@ -106,7 +105,7 @@
 
 					<span data-toggle="modal" 
 						href="${url.adminDataMgtPortlet.dictcollection_create_dictitem}&${portletNamespace}type=${constant.type_dictCollection}&${portletNamespace}itemCode=#:itemCode#&${portletNamespace}collectionCode=${(dictCollection_dictCollection.collectionCode)!}"
-						 data-target="\\#modal">
+						 data-target="\\#modal-lg">
 						
 						<i class="fa fa-pencil" aria-hidden="true"></i>
 						
@@ -151,7 +150,7 @@ function _collectionSub_dictItem_autocompleteSearch(val) {
 
 (function($) {
 	
-	var _collectionSub_dictItem_BaseUrl_detail = "${api.server}/dictcollections/${(dictCollection_dictCollection.collectionCode)!}/dictitems",
+	var _collectionSub_dictItem_BaseUrl_detail = "${api.endpoint}/dictcollections/${(dictCollection_dictCollection.collectionCode)!}/dictitems",
 	
 		_collectionSub_dictItem_dataSource_detail = new kendo.data.DataSource({
 		
@@ -175,6 +174,8 @@ function _collectionSub_dictItem_autocompleteSearch(val) {
 						success: function(result) {
 						
 							$('#_collectionSub_dictItem_CounterListDetail').html(result.total);	
+							
+							result["data"] = result.total==0 ? []: result["data"];
 							options.success(result);
 							
 						},
@@ -188,25 +189,38 @@ function _collectionSub_dictItem_autocompleteSearch(val) {
 				},
 				destroy: function(options) {
 					
-					$.ajax({
-						url: _collectionSub_dictItem_BaseUrl_detail + "/" + options.data.itemCode,
-						headers: {
-							"groupId": ${groupId}
-						},
-						type: 'DELETE',
-						success: function(result) {
+					var confirmWindown = showWindowConfirm('#template-confirm','Cảnh báo','Bạn có chắc muốn xóa bản ghi này?', $("#_collectionSub_dictItem_listView") );
+					
+					confirmWindown.then(function(confirmed){
+					
+						if(confirmed){
+
+							$.ajax({
+								url: _collectionSub_dictItem_BaseUrl_detail + "/" + options.data.itemCode,
+								headers: {
+									"groupId": ${groupId}
+								},
+								type: 'DELETE',
+								success: function(result) {
+									options.success();
+									showMessageToastr("success", 'Yêu cầu của bạn được xử lý thành công!');
+									
+								},
+								error: function(xhr, textStatus, errorThrown) {
+									
+									_collectionSub_dictItem_dataSource_detail.dataSource.error();
+									showMessageByAPICode(xhr.status);
+								
+								}
+				
+							});
+
+						} else{
 							
-							showMessageToastr("success", 'Yêu cầu của bạn được xử lý thành công!');
-							
-						},
-						error: function(xhr, textStatus, errorThrown) {
-							
-							_collectionSub_dictItem_dataSource_detail.dataSource.error();
-							showMessageByAPICode(xhr.status);
-						
+							options.error();
 						}
-		
 					});
+					
 				},
 				parameterMap: function(options, operation) {
 					
@@ -249,38 +263,22 @@ function _collectionSub_dictItem_autocompleteSearch(val) {
 			}
 		});
 
-		var localIndex = 0;
 		$("#_collectionSub_dictItem_listView").kendoListView({
 			remove: function(e) {
-			
-				if(!confirm("Xác nhận xoá " + e.model.get("itemName") + "?")){
-					e.preventDefault();
-				}
 				
 			},
 			
 			dataSource: _collectionSub_dictItem_dataSource_detail,
 			
-			template: function(data){
-				//var _pageSize = _collectionSub_dictItem_dataSource_detail.pageSize();
-				localIndex++;
-				//var currentPage = $("#pager_dossier_template_part").data("kendoPager").page();
-				//var totalPage =  $("#pager_dossier_template_part").data("kendoPager").totalPages();
-				//var index = (currentPage-1)*_pageSize + localIndex;
-				//data.itemIndex = index;
-				data.itemIndex = localIndex;
-				return kendo.template($("#_collectionSub_dictItem_template").html())(data);
-			},
-			dataBound: function() {
-				localIndex = 0;
-			},
+			template: kendo.template($("#_collectionSub_dictItem_template").html()),
+			
 			filterable: {
 			
 				logic: "or",
 				filters: [
 					
-					{ field: "itemCode", operator: "contains", 	value: $("#_collectionSub_dictItem_keySearch").val() },
-					{ field: "itemName", operator: "contains", 	value: $("#_collectionSub_dictItem_keySearch").val() }
+					{ field: "itemCode", operator: "contains", 	value: $("#_collectionSub_dictItem_keySearch").val().trim() },
+					{ field: "itemName", operator: "contains", 	value: $("#_collectionSub_dictItem_keySearch").val().trim() }
 				]
 			
 			}

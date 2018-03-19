@@ -2,271 +2,341 @@
 <#include "init.ftl">
 </#if>
 <div id="frmDetailAccount">
-<div class="row account-info" >
-	<div class="col-sm-2 col-xs-12">
-		<img src="/o/frontend.web.portal/images/default_avatar.png" class="img-responsive max-width-100 img-rounded">
-		<div class="text-center"><a href="" class="text-light-gray">Thay đổi avatar</a></div>
-		<p class="name text-bold text-center" data-bind="text:applicantName" id="profileName"></p>
-		<div>Số CMND/Hộ chiếu: <span class="text-bold" data-bind="text:applicantIdNo" id="profileIdNo"></span></div>
-		<div>Ngày cấp: <span class="text-bold" data-bind="text:applicantIdDate" id="profileDate"></span></div>
-		<div>Thư điện tử: <span class="text-bold" data-bind="text:contactEmail" id="profileEmail"></span></div>
+	<div class="row account-info" >
+		<div class="col-sm-2 col-xs-12">
+			<input type="file" id="avatar_file_profile" accept="image/*"  onchange="profile_changeAvatarFileEntry(this)" style="display: none;" />
+			<img id="profile_avatar_thumbnail" src="/o/frontend.web.portal/images/default_avatar.png" class="img-responsive max-width-100 img-rounded">
+			<div class="text-center"><a id="change_avatar_profile" data-pk="${(applicantId)!}" href="#" class="text-light-gray">Thay đổi avatar</a></div>
+			<p class="name text-bold text-center" data-bind="text:applicantName" id="profileName"></p>
+			<div>Số CMND/Hộ chiếu: <span class="text-bold" data-bind="text:applicantIdNo" id="profileIdNo"></span></div>
+			<div>Ngày cấp: <span class="text-bold" data-bind="text:applicantIdDate" id="profileDate"></span></div>
+			<div>Thư điện tử: <span class="text-bold" data-bind="text:contactEmail" id="profileEmail"></span></div>
 
-		<ul class="nav nav-tabs" role="tablist">
-			<li role="presentation" class="active"><a href="#tttk" role="tab" data-toggle="tab">Thông tin tài khoản</a></li>
-			<li role="presentation"><a href="#dmk" role="tab" data-toggle="tab">Đổi mật khẩu</a></li>
-		</ul>
-	</div>
-	<div class="col-sm-10 col-xs-12">
-	<div class="tab-content box">
-		<#if applicantIdType == "business">
-		<div role="tabpanel" class="tab-pane active" id="tttk">
-			<div class="row-header">
-				<div class="background-triangle-big"><i class="fa fa-user" aria-hidden="true"></i></div>
-				<span class="text-bold">Thông tin tài khoản</span>
-			</div>
-			<div class="row-parts-content PB15">
-				<div class="row MB15">
-					<div class="col-sm-2">
-						<p> Tên công ty</p>
-					</div>
-					<div class="col-sm-7">
-						<span id="applicantName" data-pk="1" data-toggle="#editApplicantName" data-original-title="Nhập tên công ty" tabindex="-1" class="" data-bind="text:applicantName"> <#-- ${api.applicant.applicantName} --> </span>
-						<span class="pull-right">
-							<a href="#" id="editApplicantName" style="float: right"><i class="fa fa-pencil"></i></a>
-						</span>
-					</div>
-				</div>
-				<div class="row MB15">
-					<div class="col-sm-2">
-						<p>Địa chỉ tổ chức</p>
-					</div>
-					<div class="col-sm-7">
-						<span id="address" data-pk="1" data-toggle="#editAddress" data-original-title="Nhập địa chỉ" tabindex="-1" class="" data-bind="text:address"> ${address} </span>
-						<span class="pull-right">
-							<a href="#" id="editAddress" style="float: right"><i class="fa fa-pencil"></i></a>
-						</span>
-					</div>
-				</div>
-				<div class="row MB15">
-					<div class="col-sm-2">
-						<p>Tỉnh/ Thành phố</p>
-					</div>
-					<div class="col-sm-7">
-						<span id="city" data-pk="1" data-type="select" data-toggle="#editCity" data-original-title="Chọn thành phố" tabindex="-1" class="" data-bind="text:cityName"><#--  ${api.applicant.cityName} --> </span>
-						<span class="pull-right">
-							<a href="#" id="editCity" style="float: right"><i class="fa fa-pencil"></i></a>
-						</span>
-					</div>
-				</div>
-				<div class="row MB15">
-					<div class="col-sm-2">
-						<p>Quận/ Huyện</p>
-					</div>
-					<div class="col-sm-7">
-						<span id="district" data-pk="1" data-type="select" data-toggle="#editDistrict" data-original-title="Chọn quận/ huyện" tabindex="-1" class="" data-bind="text:districtName"><#-- ${api.applicant.districtName} --></span>
-						<span class="pull-right">
-							<a href="#" id="editDistrict" style="float: right"><i class="fa fa-pencil"></i></a>
-						</span>
-					</div>
-				</div>
-				<div class="row MB15">
-					<div class="col-sm-2">
-						<p>Xã/ Phường</p>
-					</div>
-					<div class="col-sm-7">
-						<span id="wards" data-pk="1" data-type="select" data-toggle="#editWards" data-original-title="Chọn xã/ phường" tabindex="-1" class="" data-bind="text:wardName"><#-- ${api.applicant.wardName} --></span>
-						<span class="pull-right">
-							<a href="#" id="editWards" style="float: right"><i class="fa fa-pencil"></i></a>
-						</span>
-					</div>
-				</div>
-				<div class="row MB15">
-					<div class="col-sm-2">
-						<p>Điện thoại</p>
-					</div>
-					<div class="col-sm-7">
-						<span id="phone" data-pk="1" data-toggle="#editPhone" data-original-title="Nhập số điện thoại" tabindex="-1" class="" data-bind="text:contactTelNo"><#-- ${api.applicant.contactTelNo} --></span>
-						<span class="pull-right">
-							<a href="#" id="editPhone" style="float: right"><i class="fa fa-pencil"></i></a>
-						</span>
-					</div>
-				</div>
-				<div class="row MB15">
-					<div class="col-sm-2">
-						<p>Thư điện tử - Email</p>
-					</div>
-					<div class="col-sm-7">
-						<span id="email" data-pk="1" data-toggle="#editEmail" data-original-title="Nhập email" tabindex="-1" class="" data-bind="text:contactEmail"><#-- ${api.applicant.contactEmail} --> </span>
-						<span class="pull-right">
-							<a href="#" id="editEmail" style="float: right"><i class="fa fa-pencil"></i></a>
-						</span>
-					</div>
-				</div>
-				<div class="row MB15">
-					<div class="col-sm-2">
-						<p>Tên người đại diện</p>
-					</div>
-					<div class="col-sm-7">
-						<span id="contactName" data-pk="1" data-toggle="#editContactName" data-original-title="Tên người đại diện" tabindex="-1" class="" data-bind="text:contactName"><#-- ${api.applicant.contactName} --></span>
-						<span class="pull-right">
-							<a href="#" id="editContactName" style="float: right"><i class="fa fa-pencil"></i></a>
-						</span>
-					</div>
-				</div>
-			</div>
-			<#else>
-			<div role="tabpanel" class="tab-pane active" id="tttk">
-				<div class="row-header">
-					<div class="background-triangle-big"><i class="fa fa-user" aria-hidden="true"></i></div>
-					<span class="text-bold">Thông tin tài khoản</span>
-				</div>
-				<div class="row-parts-content PB15">
-					<div class="row MB15">
-						<div class="col-sm-2">
-							<p>Họ và tên</p>
-						</div>
-						<div class="col-sm-7">
-							<span id="applicantName" data-pk="1" data-toggle="#editApplicantName" data-original-title="Nhập họ và tên" tabindex="-1" class="" data-bind="text:applicantName"><#-- ${api.applicant.applicantName} --></span>
-							<span class="pull-right">
-								<a href="#" id="editApplicantName" style="float: right"><i class="fa fa-pencil"></i></a>
-							</span>
-						</div>
-					</div>
-					<div class="row MB15">
-						<div class="col-sm-2">
-							<p>Địa chỉ</p>
-						</div>
-						<div class="col-sm-7">
-							<span id="address" data-pk="1" data-toggle="#editAddress" data-original-title="Nhập địa chỉ" tabindex="-1" class="" data-bind="text:address"><#-- ${api.applicant.address} --></span>
-							<span class="pull-right">
-								<a href="#" id="editAddress" style="float: right"><i class="fa fa-pencil"></i></a>
-							</span>
-						</div>
-					</div>
-					<div class="row MB15">
-						<div class="col-sm-2">
-							<p>Tỉnh/ Thành phố</p>
-						</div>
-						<div class="col-sm-7">
-							<span id="city" data-pk="1" data-type="select" data-toggle="#editCity" data-original-title="Chọn tỉnh/ thành phố" tabindex="-1" class="" data-bind="text:cityName"><#-- ${api.applicant.cityName} --></span>
-							<span class="pull-right">
-								<a href="#" id="editCity" style="float: right"><i class="fa fa-pencil"></i></a>
-							</span>
-						</div>
-					</div>
-					<div class="row MB15">
-						<div class="col-sm-2">
-							<p>Quận/ Huyện</p>
-						</div>
-						<div class="col-sm-7">
-							<span id="district" data-pk="1" data-type="select" data-toggle="#editDistrict" data-original-title="Chọn quận/ huyện" tabindex="-1" class="" data-bind="text:districtName"><#-- ${api.applicant.districtName} --></span>
-							<span class="pull-right">
-								<a href="#" id="editDistrict" style="float: right"><i class="fa fa-pencil"></i></a>
-							</span>
-						</div>
-					</div>
-					<div class="row MB15">
-						<div class="col-sm-2">
-							<p>Xã/ Phường</p>
-						</div>
-						<div class="col-sm-7">
-							<span id="wards" data-pk="1" data-type="select" data-toggle="#editWards" data-original-title="Chọn xã/ phường" tabindex="-1" class="" data-bind="text:wardName"><#-- ${api.applicant.wardName} --></span>
-							<span class="pull-right">
-								<a href="#" id="editWards" style="float: right"><i class="fa fa-pencil"></i></a>
-							</span>
-						</div>
-					</div>
-					<div class="row MB15">
-						<div class="col-sm-2">
-							<p>Điện thoại</p>
-						</div>
-						<div class="col-sm-7">
-							<span id="phone" data-pk="1" data-toggle="#editPhone" data-original-title="Nhập số điện thoại" tabindex="-1" class="" data-bind="text:contactTelNo"><#-- ${api.applicant.contactTelNo} --></span>
-							<span class="pull-right">
-								<a href="#" id="editPhone" style="float: right"><i class="fa fa-pencil"></i></a>
-							</span>
-						</div>
-					</div>
-					<div class="row MB15">
-						<div class="col-sm-2">
-							<p>Thư điện tử - Email</p>
-						</div>
-						<div class="col-sm-7">
-							<span id="email" data-pk="1" data-toggle="#editEmail" data-original-title="Nhập email" tabindex="-1" class="" data-bind="text:contactEmail"><#-- ${api.applicant.contactEmail} --></span>
-							<span class="pull-right">
-								<a href="#" id="editEmail" style="float: right"><i class="fa fa-pencil"></i></a>
-							</span>
-						</div>
-					</div>
-				</div>
-				</#if>
-			</div>
-			<div role="tabpanel" class="tab-pane" id="dmk">
-				<div class="row-header">
-					<div class="background-triangle-big"><i class="fa fa-user" aria-hidden="true"></i></div>
-					<span class="text-bold">Đổi mật khẩu</span>
-				</div>
-				<form id="fmChangePasswordUser">
-					<div class="row-parts-content PB15">
-						<div class="row">
-							<div class="col-sm-2">
-								<label class="with-input-sm">Mật khẩu hiện tại:</label>
-							</div>
-							<div class="col-sm-4">
-								<div class="form-group">
-									<input type="password" class="form-control" id="old_password">
-								</div>
-							</div>
-							<div class="col-sm-6 MT5" id="messagePassword">
-
-							</div>
-						</div>
-						<div class="row">
-							<div class="col-sm-2">
-								<label class="with-input-sm">Mật khẩu mới:</label>
-							</div>
-							<div class="col-sm-4">
-								<div class="form-group">
-									<input type="password" class="form-control" id="new_password">
-								</div>
-							</div>
-							<div class="col-sm-6">
-
-							</div>
-						</div>
-						<div class="row">
-							<div class="col-sm-2">
-								<label class="with-input-sm">Nhập lại mật khẩu mới:</label>
-							</div>
-							<div class="col-sm-4">
-								<div class="form-group">
-									<input type="password" class="form-control" id="retype_new_password">
-								</div>
-								<div class="checkbox">
-									<input type="checkbox" id="show_password"> <label>Hiển thị mật khẩu</label>
-								</div>
-							</div>
-							<div class="col-sm-6">
-
-							</div>
-						</div>
-						<div class="row">
-							<div class="col-sm-2">
-
-							</div>
-							<div class="col-sm-10">
-								<button class="btn btn-active" id="btn-change-password-user" data-bind="attr:{data-pk : userId}">Lưu thay đổi</button>
-							</div>
-						</div>
-					</div>
-				</form>
-			</div>
-
+			<ul class="nav nav-tabs" role="tablist">
+				<li role="presentation" class="active"><a href="#tttk" role="tab" data-toggle="tab">Thông tin tài khoản</a></li>
+				<li role="presentation"><a href="#dmk" role="tab" data-toggle="tab">Đổi mật khẩu</a></li>
+			</ul>
 		</div>
+		<div class="col-sm-10 col-xs-12">
+			<div class="tab-content box">
+				<#if applicantIdType?has_content && applicantIdType == "business">
+				<div role="tabpanel" class="tab-pane active" id="tttk">
+					<div class="row-header align-middle-lg">
+						<div class="background-triangle-big"><i class="fa fa-user" aria-hidden="true"></i></div>
+						<span class="text-bold">Thông tin tài khoản</span>
+					</div>
+					<div class="row-parts-content PB15">
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p> Tên công ty</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="applicantName" data-pk="1" data-toggle="#editApplicantName" data-original-title="Nhập tên công ty" tabindex="-1" class="" data-bind="text:applicantName"> <#-- ${api.applicant.applicantName} --> </span>
+								<!-- <span class="pull-right">
+									<a href="#" id="editApplicantName" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span> -->
+							</div>
+						</div>
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Địa chỉ tổ chức</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="address" data-pk="1" data-toggle="#editAddress" data-original-title="Nhập địa chỉ" tabindex="-1" class="" data-bind="text:address"> </span>
+								<!-- <span class="pull-right">
+									<a href="#" id="editAddress" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span> -->
+							</div>
+						</div>
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Tỉnh/ Thành phố</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="city" data-pk="1" data-type="select" data-toggle="#editCity" data-original-title="Chọn thành phố" tabindex="-1" class="" data-bind="text:cityName"><#--  ${api.applicant.cityName} --> </span>
+								<!-- <span class="pull-right">
+									<a href="#" id="editCity" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span> -->
+							</div>
+						</div>
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Quận/ Huyện</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="district" data-pk="1" data-type="select" data-toggle="#editDistrict" data-original-title="Chọn quận/ huyện" tabindex="-1" class="" data-bind="text:districtName"><#-- ${api.applicant.districtName} --></span>
+								<!-- <span class="pull-right">
+									<a href="#" id="editDistrict" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span> -->
+							</div>
+						</div>
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Xã/ Phường</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="wards" data-pk="1" data-type="select" data-toggle="#editWards" data-original-title="Chọn xã/ phường" tabindex="-1" class="" data-bind="text:wardName"><#-- ${api.applicant.wardName} --></span>
+								<!-- <span class="pull-right">
+									<a href="#" id="editWards" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span> -->
+							</div>
+						</div>
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Điện thoại</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="phone" data-pk="1" data-toggle="#editPhone" data-original-title="Nhập số điện thoại" tabindex="-1" class="" data-bind="text:contactTelNo"><#-- ${api.applicant.contactTelNo} --></span>
+								<!-- <span class="pull-right">
+									<a href="#" id="editPhone" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span> -->
+							</div>
+						</div>
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Thư điện tử - Email</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="email" data-pk="1" data-toggle="#editEmail" data-original-title="Nhập email" tabindex="-1" class="" data-bind="text:contactEmail"><#-- ${api.applicant.contactEmail} --> </span>
+								<!-- <span class="pull-right">
+									<a href="#" id="editEmail" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span> -->
+							</div>
+						</div>
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Tên người đại diện</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="contactName" data-pk="1" data-toggle="#editContactName" data-original-title="Tên người đại diện" tabindex="-1" class="" data-bind="text:contactName"><#-- ${api.applicant.contactName} --></span>
+								<!-- <span class="pull-right">
+									<a href="#" id="editContactName" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span> -->
+							</div>
+						</div>
+					</div>
+				</div>
+				<#elseif applicantIdType?has_content && applicantIdType == "citizen">
+				<div role="tabpanel" class="tab-pane active" id="tttk">
+					<div class="row-header align-middle-lg">
+						<div class="background-triangle-big"><i class="fa fa-user" aria-hidden="true"></i></div>
+						<span class="text-bold">Thông tin tài khoản</span>
+					</div>
+					<div class="row-parts-content PB15">
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Họ và tên</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="applicantName" data-pk="1" data-toggle="#editApplicantName" data-original-title="Nhập họ và tên" tabindex="-1" class="" data-bind="text:applicantName"><#-- ${api.applicant.applicantName} --></span>
+								<span class="pull-right">
+									<a href="#" id="editApplicantName" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span>
+							</div>
+						</div>
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Địa chỉ</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="address" data-pk="1" data-toggle="#editAddress" data-original-title="Nhập địa chỉ" tabindex="-1" class="" data-bind="text:address"><#-- ${api.applicant.address} --></span>
+								<span class="pull-right">
+									<a href="#" id="editAddress" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span>
+							</div>
+						</div>
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Tỉnh/ Thành phố</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="city" data-pk="1" data-type="select" data-toggle="#editCity" data-original-title="Chọn tỉnh/ thành phố" tabindex="-1" class="" data-bind="text:cityName"><#-- ${api.applicant.cityName} --></span>
+								<span class="pull-right">
+									<a href="#" id="editCity" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span>
+							</div>
+						</div>
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Quận/ Huyện</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="district" data-pk="1" data-type="select" data-toggle="#editDistrict" data-original-title="Chọn quận/ huyện" tabindex="-1" class="" data-bind="text:districtName"><#-- ${api.applicant.districtName} --></span>
+								<span class="pull-right">
+									<a href="#" id="editDistrict" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span>
+							</div>
+						</div>
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Xã/ Phường</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="wards" data-pk="1" data-type="select" data-toggle="#editWards" data-original-title="Chọn xã/ phường" tabindex="-1" class="" data-bind="text:wardName"><#-- ${api.applicant.wardName} --></span>
+								<span class="pull-right">
+									<a href="#" id="editWards" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span>
+							</div>
+						</div>
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Điện thoại</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="phone" data-pk="1" data-toggle="#editPhone" data-original-title="Nhập số điện thoại" tabindex="-1" class="" data-bind="text:contactTelNo"><#-- ${api.applicant.contactTelNo} --></span>
+								<span class="pull-right">
+									<a href="#" id="editPhone" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span>
+							</div>
+						</div>
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Thư điện tử - Email</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="email" data-pk="1" data-toggle="#editEmail" data-original-title="Nhập email" tabindex="-1" class="" data-bind="text:contactEmail"><#-- ${api.applicant.contactEmail} --></span>
+								<span class="pull-right">
+									<a href="#" id="editEmail" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span>
+							</div>
+						</div>
+					</div>
+
+				</div>
+				<#elseif employee?has_content>
+				<div role="tabpanel" class="tab-pane active" id="tttk">
+					<div class="row-header align-middle-lg">
+						<div class="background-triangle-big"><i class="fa fa-user" aria-hidden="true"></i></div>
+						<span class="text-bold">Thông tin tài khoản</span>
+					</div>
+					<div class="row-parts-content PB15">
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Họ và tên</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="fullname" data-pk="1" data-toggle="#editFullname" data-original-title="Nhập họ và tên" tabindex="-1" class="" >
+									${employee.fullname}
+								</span>
+								<span class="pull-right">
+									<a href="#" id="editFullname" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span>
+							</div>
+						</div>
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Giới tính</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="gender" data-pk="1" data-type="select" data-toggle="#editGender" data-original-title="Chọn tỉnh/ thành phố" tabindex="-1" class="">${employee.gender} </span>
+								<span class="pull-right">
+									<a href="#" id="editGender" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span>
+							</div>
+						</div>
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Điện thoại cơ quan</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="telNo" data-pk="1" data-toggle="#editTelNo" data-original-title="Nhập số điện thoại" tabindex="-1" class="" > ${employee.telNo} </span>
+								<span class="pull-right">
+									<a href="#" id="editTelNo" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span>
+							</div>
+						</div>
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Điện thoại cá nhân</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="mobile" data-pk="1" data-toggle="#editMobile" data-original-title="Nhập số điện thoại" tabindex="-1" class="" > ${employee.mobile} </span>
+								<span class="pull-right">
+									<a href="#" id="editMobile" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span>
+							</div>
+						</div>
+						<div class="row MB15">
+							<div class="col-sm-2">
+								<p>Thư điện tử - Email</p>
+							</div>
+							<div class="col-sm-7">
+								<span id="email" data-pk="1" data-toggle="#editEmail" data-original-title="Nhập email" tabindex="-1" class="" >${employee.email} </span>
+								<span class="pull-right">
+									<a href="#" id="editEmail" style="float: right"><i class="fa fa-pencil"></i></a>
+								</span>
+							</div>
+						</div>
+					</div>
+
+				</div>
+				<#else>
+				</#if>
+				<div role="tabpanel" class="tab-pane" id="dmk">
+					<div class="row-header">
+						<div class="background-triangle-big"><i class="fa fa-user" aria-hidden="true"></i></div>
+						<span class="text-bold">Đổi mật khẩu</span>
+					</div>
+					<form id="fmChangePasswordUser">
+						<div class="row-parts-content PB15">
+							<div class="row">
+								<div class="col-sm-2">
+									<label class="with-input-sm">Mật khẩu hiện tại:</label>
+								</div>
+								<div class="col-sm-4">
+									<div class="form-group">
+										<input type="password" class="form-control" id="old_password">
+									</div>
+								</div>
+								<div class="col-sm-6 MT5" id="messagePassword">
+
+								</div>
+							</div>
+							<div class="row">
+								<div class="col-sm-2">
+									<label class="with-input-sm">Mật khẩu mới:</label>
+								</div>
+								<div class="col-sm-4">
+									<div class="form-group">
+										<input type="password" class="form-control" id="new_password">
+									</div>
+								</div>
+								<div class="col-sm-6">
+
+								</div>
+							</div>
+							<div class="row">
+								<div class="col-sm-2">
+									<label class="with-input-sm">Nhập lại mật khẩu mới:</label>
+								</div>
+								<div class="col-sm-4">
+									<div class="form-group">
+										<input type="password" class="form-control" id="retype_new_password">
+									</div>
+									<div class="checkbox">
+										<input type="checkbox" id="show_password"> <label>Hiển thị mật khẩu</label>
+									</div>
+								</div>
+								<div class="col-sm-6">
+
+								</div>
+							</div>
+							<div class="row">
+								<div class="col-sm-2">
+
+								</div>
+								<div class="col-sm-10">
+									<button class="btn btn-active" id="btn-change-password-user" data-bind="attr:{data-pk : userId}">Lưu thay đổi</button>
+								</div>
+							</div>
+						</div>
+					</form>
+				</div>
+
+			</div>
+		</div>
+		<span id="notification"></span>
 	</div>
-	<span id="notification"></span>
-</div>
-</div>
 </div>
 
 <script type="text/javascript">
@@ -291,7 +361,7 @@
 			error : function(xhr){
 				$("#messagePassword").html('<span class="red"><i class="fa fa-times" aria-hidden="true"></i> <span class="message">Mật khẩu hoặc tài khoản không đúng</span></span>');
 			}
-		});
+		});	
 	});
 
 	$("#show_password").click(function(){
@@ -370,7 +440,8 @@
 	$.fn.editable.defaults.mode = 'inline';
 	$.fn.editable.defaults.send = "always";
 	
-	var updateProfileURL = '/o/rest/v2/applicants/${(api.applicant.applicantId)!}';
+	var updateProfileURL = '/o/rest/v2/applicants/${(applicant.applicantId)!}';
+	var updateProfileEmployeeURL = '/o/rest/v2/applicants/${(employee.employeeId)!}';
 	
 	$('#applicantName').editable({
 		url: updateProfileURL,
@@ -491,7 +562,7 @@
 			$('#district').html("-");
 			$('#wards').html("-");
 			$.ajax({
-				url : "${api.server}/applicants/${(api.applicant.applicantId)!}",
+				url : "${api.server}/applicants/${(applicant.applicantId)!}",
 				dataType : "json",
 				type : "PUT",
 				async: false,
@@ -605,7 +676,7 @@
 			$('#wards').editable('option', 'source', arrDisplay);
 			$('#wards').html("-");
 			$.ajax({
-				url : "${api.server}/applicants/${(api.applicant.applicantId)!}",
+				url : "${api.server}/applicants/${(applicant.applicantId)!}",
 				dataType : "json",
 				type : "PUT",
 				async: false,
@@ -635,7 +706,7 @@
 				async: false,
 				headers: {"groupId": ${groupId}},
 				data : {
-					parent : "${(api.applicant.cityCode)!}"
+					parent : "${(applicant.cityCode)!}"
 				},
 				success : function(result){
 					var arrDataRes = result.data;
@@ -708,7 +779,7 @@
 				async: false,
 				headers: {"groupId": ${groupId}},
 				data : {
-					parent : "${(api.applicant.districtCode)!}"
+					parent : "${(applicant.districtCode)!}"
 				},
 				success : function(result){
 					var arrDataRes = result.data;
@@ -793,6 +864,148 @@
 		}
 	});
 
+
+	
+
+
+	$('#gender').editable({
+		url: updateProfileEmployeeURL,
+		emptytext : "",
+		ajaxOptions:{
+			type:'PUT',
+			dataType: "json",
+			headers: {"groupId": ${groupId}}
+		},
+		params: function(params) {
+			return {
+				gender: params.value,
+				
+			};
+		},
+		validate: function(value) {
+			// if (value.length < 1){
+			//   return 'Đây là trường bắt buộc';
+			// }
+		},
+		success : function(data){
+
+		},
+		error : function(xhr){
+
+		},
+		prepend: "",
+		source: function(){
+			var arrDisplay = new Array();
+			arrDisplay.push( { value : "Nam", text : "Nam"});
+			arrDisplay.push( { value : "Nu", text : "Nữ"});
+			return arrDisplay;
+		}
+	});
+
+	$('#fullname').editable({
+		url: updateProfileEmployeeURL,
+		emptytext : "-",
+		ajaxOptions:{
+			type:'PUT',
+			dataType: "json",
+			headers: {"groupId": ${groupId}}
+		},
+		params: function(params) {
+			return {
+				fullname: params.value
+			};
+		},
+		validate: function(value) {
+			// if (value.length < 1){
+			//   return 'Đây là trường bắt buộc';
+			// }
+		},
+		success: function(response, newValue) {
+			$("#profileEmail").html(newValue);
+
+		},
+		error:function(xhr) {
+			if(xhr.status == 500) return 'Internal server error';
+		}
+	});
+
+	$('#telNo').editable({
+		url: updateProfileEmployeeURL,
+		emptytext : "-",
+		ajaxOptions:{
+			type:'PUT',
+			dataType: "json",
+			headers: {"groupId": ${groupId}}
+		},
+		params: function(params) {
+			return {
+				telNo: params.value
+			};
+		},
+		validate: function(value) {
+			// if (value.length < 1){
+			//   return 'Đây là trường bắt buộc';
+			// }
+		},
+		success: function(response, newValue) {
+			$("#profileEmail").html(newValue);
+
+		},
+		error:function(xhr) {
+			if(xhr.status == 500) return 'Internal server error';
+		}
+	});
+
+	$('#mobile').editable({
+		url: updateProfileEmployeeURL,
+		emptytext : "-",
+		ajaxOptions:{
+			type:'PUT',
+			dataType: "json",
+			headers: {"groupId": ${groupId}}
+		},
+		params: function(params) {
+			return {
+				mobile: params.value
+			};
+		},
+		validate: function(value) {
+			// if (value.length < 1){
+			//   return 'Đây là trường bắt buộc';
+			// }
+		},
+		success: function(response, newValue) {
+			$("#profileEmail").html(newValue);
+
+		},
+		error:function(xhr) {
+			if(xhr.status == 500) return 'Internal server error';
+		}
+	});
+
+	$('#editFullname').click(function(e) {
+		e.stopPropagation();
+		$('#fullname').editable('toggle');
+	});
+
+	$('#editGender').click(function(e) {
+		e.stopPropagation();
+		$('#gender').editable('toggle');
+	});
+
+	$('#editMobile').click(function(e) {
+		e.stopPropagation();
+		$('#mobile').editable('toggle');
+	});
+
+	$('#editTelNo').click(function(e) {
+		e.stopPropagation();
+		$('#telNo').editable('toggle');
+	});
+
+	//================================================
+
+
 	$('#editApplicantName').click(function(e) {
 		e.stopPropagation();
 		$('#applicantName').editable('toggle');
@@ -835,7 +1048,7 @@
 
 	var pullDetailProfile = function(id){
 		$.ajax({
-			url : "${api.server}/applicants/${(api.applicant.applicantId)!}",
+			url : "${api.server}/applicants/${(applicant.applicantId)!}",
 			dataType : "json",
 			type : "GET",
 			headers: {"groupId": ${groupId}},
@@ -888,4 +1101,99 @@
 		});
 	}
 	pullDetailProfile();
+
+	$(document).on('click', '#change_avatar_profile', function(event){
+		event.preventDefault();
+		
+		$("#avatar_file_profile").trigger({ type: "click" });
+	});
+
+	function profile_changeAvatarFileEntry(fileInput) {
+		
+		var files = fileInput.files;
+
+		if (files.length > 0) {
+
+			//show client
+			for (var i = 0; i < files.length; i++) {
+				
+				var file = files[i];
+				var imageType = /image.*/; 
+				
+				if ( i>0 ) {
+					continue;
+				}
+
+				if (!file.type.match(imageType)) {
+					continue;
+				}
+				
+				var img=document.getElementById("profile_avatar_thumbnail");
+				img.file = file;
+				var reader = new FileReader();
+				
+				reader.onload = (function(aImg) { 
+					
+					return function(e) { 
+						aImg.src = e.target.result;
+					}; 
+
+				})(img);
+				
+				reader.readAsDataURL(file);
+
+				// call ajax
+
+				// var fileName= file.name;
+				// var fileType= file.type;
+				// var fileSize= file.size;
+				// var className= "${(constants.className)!}";
+				// var classPK= $("#change_avatar_profile").attr("data-pk");
+				// var formData = new FormData();
+
+				// formData.append('file', file);
+				// formData.append('fileName', fileName);
+				// formData.append('fileType', fileType);
+				// formData.append('fileSize', fileSize);
+				// formData.append('className', className);
+				// formData.append('classPK', classPK);
+
+				// $.ajax({
+
+				// 	url: employeeUpdateBaseUrl + "/"+ classPK + "/photo" ,
+
+				// 	type: 'PUT',
+				// 	headers: {
+				// 		"groupId": ${groupId}
+				// 	},
+				// 	async: false,
+				// 	contentType: false,
+				// 	processData: false, 
+				// 	data: formData,
+				// 	success: function(result) {
+
+				// 		showMessageToastr("success", 'Yêu cầu của bạn được xử lý thành công!');
+
+				// 	},
+				// 	error: function(xhr, textStatus, errorThrown) {
+
+				// 		showMessageByAPICode(xhr.status);
+
+				// 	}
+
+				// });
+				
+			}
+
+		}
+
+	}
+
+	// var applicantId = $("#change_avatar_profile").attr('data-pk');
+
+	// if (applicantId) {
+ //        getImageBlob(employeeUpdateBaseUrl+"/"+employeeId+"/photo", $("#profile_avatar_thumbnail"));
+	// }
+
+	console.log("${(applicantIdType)!}");
 </script>

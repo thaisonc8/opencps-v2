@@ -79,6 +79,15 @@ public class ProcessStepLocalServiceImpl extends ProcessStepLocalServiceBaseImpl
 	 * org.opencps.dossiermgt.service.ProcessStepLocalServiceUtil} to access the
 	 * process step local service.
 	 */
+	
+	public List<ProcessStep> getByStatusAnsSubStatus(String dossierStatus, String dossierSubStatus, long groupId) {
+		return processStepPersistence.findByDST_DSST(dossierStatus, dossierSubStatus, groupId);
+	}
+
+	public List<ProcessStep> getBySC_SPID(String stepCode, long serviceProcessId) throws PortalException {
+		return processStepPersistence.findBySC_SPID(stepCode, serviceProcessId);
+	}
+
 	@Indexable(type = IndexableType.REINDEX)
 	public ProcessStep updateProcessStep(long groupId, long processStepId, String stepCode, String stepName,
 			long serviceProcessId, String sequenceNo, String dossierStatus, String dossierSubStatus, int durationCount,
@@ -90,8 +99,8 @@ public class ProcessStepLocalServiceImpl extends ProcessStepLocalServiceBaseImpl
 		User userAction = userLocalService.getUser(context.getUserId());
 
 		ProcessStep object = null;
-		
-		validateAdd(groupId, processStepId,stepCode, serviceProcessId, sequenceNo, dossierStatus, dossierSubStatus,
+
+		validateAdd(groupId, processStepId, stepCode, serviceProcessId, sequenceNo, dossierStatus, dossierSubStatus,
 				customProcessUrl);
 
 		if (processStepId == 0) {
@@ -156,9 +165,9 @@ public class ProcessStepLocalServiceImpl extends ProcessStepLocalServiceBaseImpl
 	@Indexable(type = IndexableType.DELETE)
 	public ProcessStep removeProcessStep(long processStepId) throws PortalException {
 		validateRemove(processStepId);
-		
+
 		List<ProcessStepRole> processStepRoles = processStepRolePersistence.findByP_S_ID(processStepId);
-		
+
 		for (ProcessStepRole stepRole : processStepRoles) {
 			processStepRolePersistence.remove(stepRole);
 		}
@@ -348,7 +357,8 @@ public class ProcessStepLocalServiceImpl extends ProcessStepLocalServiceBaseImpl
 
 		ProcessStep processStep = processStepPersistence.findByPrimaryKey(processStepId);
 
-		//List<ProcessStepRole> processStepRoles = processStepRolePersistence.findByP_S_ID(processStepId);
+		// List<ProcessStepRole> processStepRoles =
+		// processStepRolePersistence.findByP_S_ID(processStepId);
 
 		List<ProcessAction> preActions = processActionPersistence.findByPRE_CODE(processStep.getStepCode(),
 				processStep.getGroupId());
@@ -359,5 +369,9 @@ public class ProcessStepLocalServiceImpl extends ProcessStepLocalServiceBaseImpl
 		if (preActions.size() != 0 || postActions.size() != 0) {
 			throw new HasChildrenException("HasChildrenException");
 		}
+	}
+
+	public List<ProcessStep> getProcessStepbyServiceProcessId(long serviceProcessId) {
+		return processStepPersistence.findByS_P_ID(serviceProcessId);
 	}
 }

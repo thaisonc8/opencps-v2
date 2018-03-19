@@ -11,5 +11,14 @@ public class DossierLogTerm {
 	public static final String CONTENT = "content";
 	public static final String NOTIFICATION_TYPE = "notificationType";
 	public static final String PAYLOAD = "payload";
+	public static final String SERVICE_CODE = "serviceCode";
+	public static final String SERVICE_NAME = "serviceName";
+	public static final String GOVAGENCYCODE = "govAgencyCode";
+	public static final String GOVAGENCYNAME = "govAgencyName";
+	public static final String COUNTER = "counter";
 
+	//@khoavd add
+	public static final String DOSSIER_PART_TYPE = "dossierPartType";
+	public static final String ORIGINAL = "original";
+	public static final String FILE_TEMPLATE_NO = "dossierPartType";
 }

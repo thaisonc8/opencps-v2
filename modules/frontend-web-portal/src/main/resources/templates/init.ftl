@@ -20,8 +20,11 @@
 <#assign api = (Request.api)!>
 <#assign ajax = (Request.ajax)!>
 <#assign applicantId = (Request.applicantId)!>
+<#assign applicant = (Request.applicant)!>
+<#assign employee = (Request.employee)!>
 
 <#assign portalURL = (themeDisplay.getPortalURL())!>
+
 </#if>
 
 <!-- popup notification -->
@@ -45,6 +48,7 @@
 <script type="text/javascript">
   var notification;
   $(document).ready(function() {
+  try {
     notification = $("#notification").kendoNotification({
       position: {
         pinned: true,
@@ -64,5 +68,7 @@
       }
       ]
     }).data("kendoNotification");
+    
+  } catch (e) { console.log(e);}
   });
 </script>

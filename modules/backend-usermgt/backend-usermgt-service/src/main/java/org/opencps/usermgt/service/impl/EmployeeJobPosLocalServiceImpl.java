@@ -29,6 +29,8 @@ import org.opencps.usermgt.service.base.EmployeeJobPosLocalServiceBaseImpl;
 import com.liferay.asset.kernel.exception.DuplicateCategoryException;
 import com.liferay.portal.kernel.exception.NoSuchUserException;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.search.BooleanClauseOccur;
@@ -66,7 +68,7 @@ import backend.auth.api.keys.ModelNameKeys;
  * <p>
  * All custom service methods should be put in this class. Whenever methods are
  * added, rerun ServiceBuilder to copy their definitions into the
- * {@link org.opencps.usermgt.service.EmployeeJobPosLocalService}
+ * {@link org.mobilink.backend.usermgt.service.EmployeeJobPosLocalService}
  * interface.
  *
  * <p>
@@ -77,7 +79,7 @@ import backend.auth.api.keys.ModelNameKeys;
  *
  * @author Binhth
  * @see EmployeeJobPosLocalServiceBaseImpl
- * @see org.opencps.usermgt.service.EmployeeJobPosLocalServiceUtil
+ * @see org.mobilink.backend.usermgt.service.EmployeeJobPosLocalServiceUtil
  */
 @ProviderType
 public class EmployeeJobPosLocalServiceImpl extends EmployeeJobPosLocalServiceBaseImpl {
@@ -85,7 +87,7 @@ public class EmployeeJobPosLocalServiceImpl extends EmployeeJobPosLocalServiceBa
 	 * NOTE FOR DEVELOPERS:
 	 *
 	 * Never reference this class directly. Always use {@link
-	 * org.opencps.usermgt.service.EmployeeJobPosLocalServiceUtil} to
+	 * org.mobilink.backend.usermgt.service.EmployeeJobPosLocalServiceUtil} to
 	 * access the employee job pos local service.
 	 */
 	@Indexable(type = IndexableType.REINDEX)
@@ -104,7 +106,7 @@ public class EmployeeJobPosLocalServiceImpl extends EmployeeJobPosLocalServiceBa
 		}
 
 		boolean hasPermission = authImpl.hasResource(serviceContext, ModelNameKeys.WORKINGUNIT_MGT_CENTER,
-				ActionKeys.EDIT_DATA);
+				ActionKeys.UPDATE_EMPLOYEE);
 
 		if (!hasPermission) {
 			throw new UnauthorizationException();
@@ -114,6 +116,12 @@ public class EmployeeJobPosLocalServiceImpl extends EmployeeJobPosLocalServiceBa
 
 		User user = userPersistence.findByPrimaryKey(userId);
 
+		EmployeeJobPos employeeJobPosCheck = employeeJobPosPersistence.fetchByF_EmployeeId_jobPostId_workingUnitId(groupId, employeeId, jobPostId, workingUnitId);
+		
+		if(Validator.isNotNull(employeeJobPosCheck)){
+			throw new DuplicateCategoryException();
+		}
+		
 		long employeeJobPosId = counterLocalService.increment(EmployeeJobPos.class.getName());
 
 		EmployeeJobPos employeeJobPos = employeeJobPosPersistence.create(employeeJobPosId);
@@ -134,41 +142,60 @@ public class EmployeeJobPosLocalServiceImpl extends EmployeeJobPosLocalServiceBa
 		employeeJobPos.setJobPostId(jobPostId);
 		employeeJobPos.setWorkingUnitId(workingUnitId);
 
-		// role
-		Employee mEmployee = employeePersistence.fetchByPrimaryKey(employeeJobPos.getEmployeeId());
+		try {
+			
+			// role
+			Employee mEmployee = employeePersistence.fetchByPrimaryKey(employeeJobPos.getEmployeeId());
 
-		User newUser = UserLocalServiceUtil.fetchUser(mEmployee.getMappingUserId());
-		//
-		JobPos mJobPos = JobPosLocalServiceUtil.fetchJobPos(mEmployee.getMainJobPostId());
-		JobPos currentJobPos = JobPosLocalServiceUtil.fetchJobPos(jobPostId);
-		//
-		List<Role> roleIds = new ArrayList<Role>();
-		
-		roleIds.add(RoleLocalServiceUtil.fetchRole(mJobPos.getMappingRoleId()));
-		roleIds.add(RoleLocalServiceUtil.fetchRole(currentJobPos.getMappingRoleId()));
-		//
-		List<EmployeeJobPos> listEmJobPos = employeeJobPosPersistence.findByF_EmployeeId(mEmployee.getEmployeeId());
-		//
-		for (EmployeeJobPos ett : listEmJobPos) {
-			roleIds.add(RoleLocalServiceUtil
-					.fetchRole(JobPosLocalServiceUtil.fetchJobPos(ett.getJobPostId()).getMappingRoleId()));
-		}
-		//
-		RoleLocalServiceUtil.deleteUserRoles(newUser.getUserId(), roleIds);
-		RoleLocalServiceUtil.clearUserRoles(newUser.getUserId());
-		
-		for (Role role : roleIds) {
-			try {
-				RoleLocalServiceUtil.addUserRole(newUser.getUserId(), role.getRoleId());
-			} catch (Exception e) {
+			User newUser = UserLocalServiceUtil.fetchUser(mEmployee.getMappingUserId());
+			
+			
+			
+			List<Role> roles = RoleLocalServiceUtil.getUserRoles(newUser.getUserId());
+
+			//
+			List<Role> roleIds = new ArrayList<Role>();
+			
+			JobPos jobPos = JobPosLocalServiceUtil.fetchJobPos(jobPostId);
+			
+			for (Role role : roles) {
+				
+				roleIds.add(role);
 			}
+			
+			Role roleMapping = RoleLocalServiceUtil.fetchRole(jobPos.getMappingRoleId());
+			
+			if(Validator.isNotNull(roleMapping)){
+	
+				roleIds.add(roleMapping);
+			}
+			
+			try {
+				RoleLocalServiceUtil.deleteUserRoles(newUser.getUserId(), roleIds);
+				RoleLocalServiceUtil.clearUserRoles(newUser.getUserId());
+			} catch (Exception e) {
+				// TODO: handle exception
+			}
+			
+			for (Role role : roleIds) {
+				try {
+					RoleLocalServiceUtil.addUserRole(newUser.getUserId(), role.getRoleId());
+				} catch (Exception e) {
+					_log.error(e);
+				}
+			}
+			
+//			RoleLocalServiceUtil.addUserRoles(newUser.getUserId(), roleIds);
+			//
+			Indexer<User> indexer = IndexerRegistryUtil.nullSafeGetIndexer(User.class);
+			//
+			indexer.reindex(newUser);
+			
+		} catch (Exception e) {
+			// TODO: handle exception
+			_log.error(e);
+			
 		}
-		
-//		RoleLocalServiceUtil.addUserRoles(newUser.getUserId(), roleIds);
-		//
-		Indexer<User> indexer = IndexerRegistryUtil.nullSafeGetIndexer(User.class);
-		//
-		indexer.reindex(newUser);
 
 		employeeJobPos.setExpandoBridgeAttributes(serviceContext);
 
@@ -192,21 +219,21 @@ public class EmployeeJobPosLocalServiceImpl extends EmployeeJobPosLocalServiceBa
 		}
 
 		boolean hasPermission = authImpl.hasResource(serviceContext, ModelNameKeys.WORKINGUNIT_MGT_CENTER,
-				ActionKeys.EDIT_DATA);
+				ActionKeys.UPDATE_EMPLOYEE);
 
 		if (!hasPermission) {
 			throw new UnauthorizationException();
 		}
 
-		EmployeeJobPos EmployeeJobPos;
+		EmployeeJobPos employeeJobPos;
 
 		try {
 
-			EmployeeJobPos = employeeJobPosPersistence.remove(employeeJobPosId);
+			employeeJobPos = employeeJobPosPersistence.remove(employeeJobPosId);
 
 			Indexer<EmployeeJobPos> indexer = IndexerRegistryUtil.nullSafeGetIndexer(EmployeeJobPos.class);
 
-			indexer.delete(EmployeeJobPos);
+			indexer.delete(employeeJobPos);
 
 		} catch (Exception e) {
 			throw new NotFoundException();
@@ -214,24 +241,40 @@ public class EmployeeJobPosLocalServiceImpl extends EmployeeJobPosLocalServiceBa
 
 		try {
 			// role
-			Employee mEmployee = employeePersistence.fetchByPrimaryKey(EmployeeJobPos.getEmployeeId());
+			Employee mEmployee = employeePersistence.fetchByPrimaryKey(employeeJobPos.getEmployeeId());
 
 			User newUser = UserLocalServiceUtil.fetchUser(mEmployee.getMappingUserId());
 
-			JobPos mJobPos = JobPosLocalServiceUtil.fetchJobPos(mEmployee.getMainJobPostId());
-
+			List<Role> roles = RoleLocalServiceUtil.getUserRoles(newUser.getUserId());
+			
 			List<Role> roleIds = new ArrayList<Role>();
-			roleIds.add(RoleLocalServiceUtil.fetchRole(mJobPos.getMappingRoleId()));
+			
+			for (Role role : roles) {
+				roleIds.add(role);
+			}
 
+			JobPos jobPos = JobPosLocalServiceUtil.fetchJobPos(employeeJobPos.getJobPostId());
+			
+			Role roleMapping = RoleLocalServiceUtil.fetchRole(jobPos.getMappingRoleId());
+
+			if(Validator.isNotNull(roleMapping)){
+				roleIds.remove(roleMapping);
+			}
+			
 			List<EmployeeJobPos> listEmJobPos = employeeJobPosPersistence.findByF_EmployeeId(mEmployee.getEmployeeId());
 
 			for (EmployeeJobPos ett : listEmJobPos) {
 				roleIds.add(RoleLocalServiceUtil
 						.fetchRole(JobPosLocalServiceUtil.fetchJobPos(ett.getJobPostId()).getMappingRoleId()));
 			}
-
-			RoleLocalServiceUtil.deleteUserRoles(newUser.getUserId(), roleIds);
-			RoleLocalServiceUtil.clearUserRoles(newUser.getUserId());
+			
+			try {
+				RoleLocalServiceUtil.deleteUserRoles(newUser.getUserId(), roleIds);
+				RoleLocalServiceUtil.clearUserRoles(newUser.getUserId());
+			} catch (Exception e) {
+				// TODO: handle exception
+			}
+			
 			for (Role role : roleIds) {
 				try {
 					RoleLocalServiceUtil.addUserRole(newUser.getUserId(), role.getRoleId());
@@ -246,7 +289,7 @@ public class EmployeeJobPosLocalServiceImpl extends EmployeeJobPosLocalServiceBa
 		} catch (Exception e) {
 			// TODO: handle exception
 		}
-		return EmployeeJobPos;
+		return employeeJobPos;
 
 	}
 
@@ -265,7 +308,7 @@ public class EmployeeJobPosLocalServiceImpl extends EmployeeJobPosLocalServiceBa
 		}
 
 		boolean hasPermission = authImpl.hasResource(serviceContext, ModelNameKeys.WORKINGUNIT_MGT_CENTER,
-				ActionKeys.EDIT_DATA);
+				ActionKeys.UPDATE_EMPLOYEE);
 
 		if (!hasPermission) {
 			throw new UnauthorizationException();
@@ -392,4 +435,6 @@ public class EmployeeJobPosLocalServiceImpl extends EmployeeJobPosLocalServiceBa
 		return IndexSearcherHelperUtil.searchCount(searchContext, booleanQuery);
 
 	}
+	
+	private Log _log = LogFactoryUtil.getLog(EmployeeJobPosLocalServiceImpl.class.getName());
 }

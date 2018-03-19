@@ -1,21 +1,30 @@
 package org.opencps.dossiermgt.service.indexer;
 
+import java.security.MessageDigest;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
+import java.util.Random;
+import java.util.UUID;
 
 import javax.portlet.PortletRequest;
 import javax.portlet.PortletResponse;
 
-import org.opencps.datamgt.model.DictCollection;
-import org.opencps.datamgt.model.DictItem;
-import org.opencps.datamgt.service.DictCollectionLocalServiceUtil;
-import org.opencps.datamgt.service.DictItemLocalServiceUtil;
+import org.opencps.auth.utils.APIDateTimeUtils;
+import org.opencps.communication.model.ServerConfig;
+import org.opencps.communication.service.ServerConfigLocalServiceUtil;
+import org.opencps.dossiermgt.action.keypay.util.HashFunction;
 import org.opencps.dossiermgt.action.util.DossierOverDueUtils;
 import org.opencps.dossiermgt.constants.DossierTerm;
 import org.opencps.dossiermgt.model.Dossier;
 import org.opencps.dossiermgt.model.DossierAction;
+import org.opencps.dossiermgt.model.DossierActionUser;
 import org.opencps.dossiermgt.service.DossierActionLocalServiceUtil;
+import org.opencps.dossiermgt.service.DossierActionUserLocalServiceUtil;
 import org.opencps.dossiermgt.service.DossierLocalServiceUtil;
 
 import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
@@ -31,6 +40,7 @@ import com.liferay.portal.kernel.search.IndexWriterHelperUtil;
 import com.liferay.portal.kernel.search.Summary;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
 public class DossierIndexer extends BaseIndexer<Dossier> {
@@ -53,22 +63,45 @@ public class DossierIndexer extends BaseIndexer<Dossier> {
 		// Indexer of audit fields
 		document.addNumberSortable(Field.COMPANY_ID, object.getCompanyId());
 		document.addNumberSortable(Field.GROUP_ID, object.getGroupId());
-		document.addDateSortable(Field.MODIFIED_DATE, object.getCreateDate());
-		document.addDateSortable(Field.CREATE_DATE, object.getModifiedDate());
+		document.addDateSortable(Field.CREATE_DATE, object.getCreateDate());
+		document.addDateSortable(Field.MODIFIED_DATE, object.getModifiedDate());
 		document.addNumberSortable(Field.USER_ID, object.getUserId());
 		document.addKeywordSortable(Field.USER_NAME, String.valueOf(object.getUserName()));
 		document.addKeywordSortable(Field.ENTRY_CLASS_NAME, CLASS_NAME);
 		document.addNumberSortable(Field.ENTRY_CLASS_PK, object.getPrimaryKey());
 
 		// add number fields
-		document.addDateSortable(DossierTerm.APPLICANT_ID_DATE, object.getApplicantIdDate());
-		document.addDateSortable(DossierTerm.SUBMIT_DATE, object.getSubmitDate());
-		document.addDateSortable(DossierTerm.RECEIVE_DATE, object.getReceiveDate());
-		document.addDateSortable(DossierTerm.DUE_DATE, object.getDueDate());
-		document.addDateSortable(DossierTerm.RELEASE_DATE, object.getReleaseDate());
-		document.addDateSortable(DossierTerm.FINISH_DATE, object.getFinishDate());
-		document.addDateSortable(DossierTerm.CANCELLING_DATE, object.getCancellingDate());
-		document.addDateSortable(DossierTerm.CORRECTING_DATE, object.getCorrecttingDate());
+		document.addTextSortable(DossierTerm.APPLICANT_ID_DATE,
+				APIDateTimeUtils.convertDateToString(object.getApplicantIdDate(), APIDateTimeUtils._NORMAL_PARTTERN));
+		document.addTextSortable(DossierTerm.SUBMIT_DATE,
+				APIDateTimeUtils.convertDateToString(object.getSubmitDate(), APIDateTimeUtils._NORMAL_PARTTERN));
+		document.addTextSortable(DossierTerm.RECEIVE_DATE,
+				APIDateTimeUtils.convertDateToString(object.getReceiveDate(), APIDateTimeUtils._NORMAL_PARTTERN));
+		document.addTextSortable(DossierTerm.DUE_DATE,
+				APIDateTimeUtils.convertDateToString(object.getDueDate(), APIDateTimeUtils._NORMAL_PARTTERN));
+		document.addTextSortable(DossierTerm.RELEASE_DATE,
+				APIDateTimeUtils.convertDateToString(object.getReleaseDate(), APIDateTimeUtils._NORMAL_PARTTERN));
+		document.addTextSortable(DossierTerm.FINISH_DATE,
+				APIDateTimeUtils.convertDateToString(object.getFinishDate(), APIDateTimeUtils._NORMAL_PARTTERN));
+		document.addTextSortable(DossierTerm.CANCELLING_DATE,
+				APIDateTimeUtils.convertDateToString(object.getCancellingDate(), APIDateTimeUtils._NORMAL_PARTTERN));
+		document.addTextSortable(DossierTerm.CORRECTING_DATE,
+				APIDateTimeUtils.convertDateToString(object.getCorrecttingDate(), APIDateTimeUtils._NORMAL_PARTTERN));
+
+		document.addNumberSortable(DossierTerm.RECEIVE_DATE_TIMESTAMP,
+				Validator.isNotNull(object.getReceiveDate()) ? object.getReceiveDate().getTime() : 0);
+
+		document.addNumberSortable(DossierTerm.DUE_DATE_TIMESTAMP,
+				Validator.isNotNull(object.getDueDate()) ? object.getDueDate().getTime() : 0);
+
+		document.addNumberSortable(DossierTerm.RELEASE_DATE_TIMESTAMP,
+				Validator.isNotNull(object.getReleaseDate()) ? object.getReleaseDate().getTime() : 0);
+
+		document.addNumberSortable(DossierTerm.CANCELLING_DATE_TIMESTAMP,
+				Validator.isNotNull(object.getCancellingDate()) ? object.getCancellingDate().getTime() : 0);
+
+		document.addNumberSortable(DossierTerm.CORRECTING_DATE_TIMESTAMP,
+				Validator.isNotNull(object.getCorrecttingDate()) ? object.getCorrecttingDate().getTime() : 0);
 
 		// add number fields
 		document.addNumberSortable(DossierTerm.COUNTER, object.getCounter());
@@ -77,26 +110,32 @@ public class DossierIndexer extends BaseIndexer<Dossier> {
 		document.addNumberSortable(DossierTerm.VIA_POSTAL, object.getViaPostal());
 		document.addNumberSortable(DossierTerm.COUNTER, object.getCounter());
 
+		int yearDossier = 0;
+
+		int monthDossier = 0;
+
 		if (Validator.isNotNull(object.getReceiveDate())) {
 			Calendar cal = Calendar.getInstance();
 
 			cal.setTime(object.getReceiveDate());
 
-			int yearDossier = cal.get(Calendar.YEAR);
-			int monthDossier = cal.get(Calendar.MONTH) + 1;
+			yearDossier = cal.get(Calendar.YEAR);
+			monthDossier = cal.get(Calendar.MONTH) + 1;
 
-			document.addNumber(DossierTerm.YEAR_DOSSIER, yearDossier);
-			document.addNumber(DossierTerm.MONTH_DOSSIER, monthDossier);
 		}
+
+		document.addNumberSortable(DossierTerm.YEAR_DOSSIER, yearDossier);
+		document.addNumberSortable(DossierTerm.MONTH_DOSSIER, monthDossier);
 
 		// DossierAction fields
 
 		if (object.getDossierActionId() != 0) {
-			//Date now = new Date();
+			// Date now = new Date();
 
 			DossierAction dossierAction = DossierActionLocalServiceUtil.fetchDossierAction(object.getDossierActionId());
 
-			document.addDateSortable(DossierTerm.LAST_ACTION_DATE, dossierAction.getCreateDate());
+			document.addTextSortable(DossierTerm.LAST_ACTION_DATE, APIDateTimeUtils
+					.convertDateToString(dossierAction.getCreateDate(), APIDateTimeUtils._NORMAL_PARTTERN));
 			document.addTextSortable(DossierTerm.LAST_ACTION_CODE, dossierAction.getActionCode());
 			document.addTextSortable(DossierTerm.LAST_ACTION_NAME, dossierAction.getActionName());
 			document.addTextSortable(DossierTerm.LAST_ACTION_USER, dossierAction.getActionUser());
@@ -113,10 +152,15 @@ public class DossierIndexer extends BaseIndexer<Dossier> {
 
 			Date stepDuedate = DossierOverDueUtils.getStepOverDue(dossierAction.getActionOverdue(), new Date());
 
-			document.addDateSortable(DossierTerm.STEP_DUE_DATE, stepDuedate);
+			document.addTextSortable(DossierTerm.STEP_DUE_DATE,
+					APIDateTimeUtils.convertDateToString(stepDuedate, APIDateTimeUtils._NORMAL_PARTTERN));
 		}
 
 		// add text fields
+
+		long dossierId = object.getDossierId();
+
+		document.addNumberSortable(DossierTerm.DOSSIER_ID, dossierId);
 		document.addTextSortable(DossierTerm.REFERENCE_UID, object.getReferenceUid());
 		document.addTextSortable(DossierTerm.SERVICE_CODE, object.getServiceCode());
 		document.addTextSortable(DossierTerm.SERVICE_NAME, object.getServiceName());
@@ -133,6 +177,11 @@ public class DossierIndexer extends BaseIndexer<Dossier> {
 		document.addTextSortable(DossierTerm.WARD_CODE, object.getWardCode());
 		document.addTextSortable(DossierTerm.WARD_NAME, object.getWardName());
 		document.addTextSortable(DossierTerm.CONTACT_NAME, object.getContactName());
+		
+		if(Validator.isNull(object.getContactTelNo())){
+			//Get ContactTelNo from Applicant
+		}
+		
 		document.addTextSortable(DossierTerm.CONTACT_TEL_NO, object.getContactTelNo());
 		document.addTextSortable(DossierTerm.CONTACT_EMAIL, object.getContactEmail());
 		document.addTextSortable(DossierTerm.DOSSIER_TEMPLATE_NO, object.getDossierTemplateNo());
@@ -142,6 +191,7 @@ public class DossierIndexer extends BaseIndexer<Dossier> {
 		document.addTextSortable(DossierTerm.BRIEF_NOTE, object.getBriefNote());
 		document.addTextSortable(DossierTerm.DOSSIER_NO, object.getDossierNo());
 		document.addTextSortable(DossierTerm.SUBMITTING, Boolean.toString(object.getSubmitting()));
+
 		document.addTextSortable(DossierTerm.DOSSIER_STATUS, object.getDossierStatus());
 		document.addTextSortable(DossierTerm.DOSSIER_STATUS_TEXT, object.getDossierStatusText());
 		document.addTextSortable(DossierTerm.DOSSIER_SUB_STATUS, object.getDossierSubStatus());
@@ -157,8 +207,58 @@ public class DossierIndexer extends BaseIndexer<Dossier> {
 		document.addTextSortable(DossierTerm.DOSSIER_OVER_DUE,
 				Boolean.toString(getDossierOverDue(object.getPrimaryKey())));
 
+		// Indexing DossierActionUsers
+		List<Long> actionUserIds = new ArrayList<>();
+		try {
+			List<DossierAction> dossierActions = DossierActionLocalServiceUtil.getDossierActionById(dossierId);
+
+			for (DossierAction dossierAction : dossierActions) {
+				List<DossierActionUser> dossierActionUsers = DossierActionUserLocalServiceUtil
+						.getListUser(dossierAction.getDossierActionId());
+
+				if (dossierActionUsers != null) {
+					for (DossierActionUser dossierActionUser : dossierActionUsers) {
+						if (!actionUserIds.contains(dossierActionUser.getUserId())) {
+							actionUserIds.add(dossierActionUser.getUserId());
+						}
+					}
+				}
+
+			}
+		} catch (Exception e) {
+			_log.error("Can not get list dossierActions by dossierId " + dossierId, e);
+		}
+
+		document.addTextSortable(DossierTerm.ACTION_USERIDS, StringUtil.merge(actionUserIds, StringPool.SPACE));
+		
+		//binhth index dossierId CTN
+		// TODO
+		
+		MessageDigest md5 = null;
+		
+		byte[] ba = null;
+
+		try {
+			
+			md5 = MessageDigest.getInstance("MD5");
+			
+			ba = md5.digest(object.getReferenceUid().getBytes("UTF-8"));
+			
+		} catch (Exception e) {
+		} 
+
+		DateFormat df = new SimpleDateFormat("yy");
+		
+		String formattedDate = df.format(Calendar.getInstance().getTime());
+		
+		String dossierIDCTN = StringPool.BLANK;
+		
+		dossierIDCTN = formattedDate + HashFunction.hexShort(ba);
+		
+		document.addTextSortable(DossierTerm.DOSSIER_ID+"CTN", dossierIDCTN);
 		return document;
 	}
+
 
 	private boolean getDossierOverDue(long dossierId) {
 		// TODO add logic here
@@ -223,7 +323,6 @@ public class DossierIndexer extends BaseIndexer<Dossier> {
 		indexableActionableDynamicQuery.performActions();
 	}
 
-	
 	Log _log = LogFactoryUtil.getLog(DossierIndexer.class);
 
 }

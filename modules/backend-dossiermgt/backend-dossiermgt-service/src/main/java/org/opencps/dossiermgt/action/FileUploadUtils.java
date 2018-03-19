@@ -21,11 +21,13 @@ import com.liferay.portal.kernel.service.UserLocalServiceUtil;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.MimeTypesUtil;
 import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
 public class FileUploadUtils {
 
 	public static final String FOLDER_NAME_DOSSIER_FILE = "DOSSIER_FILE";
+	public static final String FOLDER_NAME_PAYMENT_FILE = "PAYMENT_FILE";
 	
 	public static FileEntry uploadFile(long userId, long companyId, long groupId, InputStream inputStream,
 			String fileName, String fileType, long fileSize, String destination, String desc,
@@ -107,8 +109,10 @@ public class FileUploadUtils {
 
 		calendar.setTime(new Date());
 		
-		if(destination == null) {
+		if(Validator.isNull(destination)) {
 			destination = StringPool.BLANK;
+		} else if(destination.indexOf(StringPool.SLASH) < 0) {
+		    destination += StringPool.SLASH;
 		}
 
 		destination += calendar.get(Calendar.YEAR) + StringPool.SLASH;
@@ -156,8 +160,9 @@ public class FileUploadUtils {
 			}
 			
 			if(fileSize == 0) {
-				byte[] bytes = FileUtil.getBytes(inputStream, -1, false);
-				fileSize = bytes.length;
+				fileSize = inputStream.available();
+				//byte[] bytes = FileUtil.getBytes(inputStream, -1, false);
+				//fileSize = bytes.length;
 			}
 			
 			String title = getFileName(sourceFileName);
@@ -275,4 +280,15 @@ public class FileUploadUtils {
 		
 		return System.currentTimeMillis() + "." + ext;
 	}
+
+	// Upload Payment File
+	public static FileEntry uploadPaymentFile(long userId, long groupId, 
+			InputStream inputStream, String sourceFileName,
+			String fileType, long fileSize, ServiceContext serviceContext) 
+		throws Exception {
+		
+		return uploadFile(userId, groupId, 0, inputStream, sourceFileName, 
+				fileType, fileSize, FOLDER_NAME_PAYMENT_FILE, serviceContext);
+	}
+	
 }

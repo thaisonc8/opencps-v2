@@ -27,20 +27,20 @@
 					</div>
 					<div class="col-sm-12">
 						<div class="form-group">
-							<label>Tên thủ tục</label>
-							<input name="service" id="service" class="form-control" placeholder="Tên thủ tục" data-bind="value:serviceInfoId" validationMessage="Bạn phải chọn thủ tục hành chính" required="required"> 
+							<label>Tên thủ tục (<span class="red">*</span>)</label>
+							<input name="serviceInfoSc" id="serviceInfoSc" class="form-control" placeholder="Tên thủ tục" data-bind="value:serviceInfoId" validationMessage="Bạn phải chọn thủ tục hành chính" required="required"> 
 						</div>
-						<span data-for="service" class="k-invalid-msg"></span>
+						<span data-for="serviceInfoSc" class="k-invalid-msg"></span>
 					</div>
 					<div class="col-sm-6 MB15">
-						<label>Cơ quan thực hiện</label>
+						<label>Cơ quan thực hiện (<span class="red">*</span>)</label>
 						<select class="form-control" id="govAgency" name="govAgency" data-bind="value: govAgencyCode" required="required" validationMessage="Bạn phải chọn cơ quan thực hiện">
-
+							
 						</select>
 						<span data-for="govAgency" class="k-invalid-msg"></span>
 					</div>
 					<div class="col-sm-6 MB15">
-						<label>Mức độ</label>
+						<label>Mức độ (<span class="red">*</span>)</label>
 						<select class="form-control" id="serviceLevel" name="serviceLevel" data-bind="value: serviceLevel" required="required" validationMessage="Bạn phải chọn mức độ">
 							<option value="2">Mức độ 2</option>
 							<option value="3">Mức độ 3</option>
@@ -60,7 +60,7 @@
 						<div class="form-group">
 							<label class="control-label">Địa chỉ nộp hồ sơ trực tuyến: 
 							</label> 
-							<textarea class="form-control" rows="3" id="serviceUrl" name="serviceUrl" data-bind="text:serviceUrl" ></textarea>
+							<textarea class="form-control" rows="3" id="serviceUrl" name="serviceUrl" data-bind="text:serviceUrl" placeholder="Đường dẫn dạng : https://www.abc.com"></textarea>
 						</div>
 					</div>
 					<div class="col-sm-6">
@@ -131,7 +131,7 @@
 			success : function(result){
 				console.log(result);
 				var viewModel = kendo.observable({
-					serviceInfoId: result.serviceInfoId,
+					serviceInfoId: result.serviceInfoId,	
 					govAgencyCode: result.govAgencyCode,
 					serviceLevel: result.serviceLevel,
 					serviceUrl: result.serviceUrl,
@@ -157,14 +157,16 @@
 		var id = $("#itemServiceConfigId").val();
 		var validator = $("#frmServiceConfigDetail").kendoValidator().data("kendoValidator");
 		if(validator.validate()){
-			if(id && id > 0){
+			if(id){
+				console.log("PUT serviceConfig");
+				console.log($("#serviceInfoSc").val());
 				$.ajax({
 					url : "${api.server}/serviceconfigs/"+id,
 					dataType : "json",
 					type : "PUT",
 					headers: {"groupId": ${groupId}},
 					data : {
-						serviceInfoId : $("#service").val(),
+						serviceInfoId : $("#serviceInfoSc").val(),
 						govAgencyCode : $("#govAgency").val(),
 						serviceLevel :$("#serviceLevel").val(),
 						process : $("#process").val(),
@@ -188,13 +190,15 @@
 					}
 				});
 			}else {
+				console.log("POST serviceConfig");
+				console.log($("#serviceInfoSc").val());
 				$.ajax({
 					url : "${api.server}/serviceconfigs",
 					dataType : "json",
 					type : "POST",
 					headers: {"groupId": ${groupId}},
 					data : {
-						serviceInfoId : $("#service").val(),
+						serviceInfoId : $("#serviceInfoSc").val(),
 						govAgencyCode : $("#govAgency").val(),
 						serviceLevel :$("#serviceLevel").val(),
 						process : $("#process").val(),
@@ -238,7 +242,7 @@
 
 				item.set("serviceInfoId",result.serviceInfoId);
 				item.set("serviceCode",result.serviceCode);
-				item.set("serviceName",$("#service").data("kendoComboBox").text());
+				item.set("serviceName",$("#serviceInfoSc").data("kendoComboBox").text());
 				item.set("domainCode",result.domainCode);
 				item.set("domainName",result.domainName);
 				item.set("govAgencyCode",result.govAgencyCode);
@@ -259,7 +263,7 @@
 			"serviceConfigId" : result.serviceConfigId,
 			"serviceInfoId" : result.serviceInfoId,
 			"serviceCode" : result.serviceCode,
-			"serviceName" : $("#service").data("kendoComboBox").text(),
+			"serviceName" : $("#serviceInfoSc").data("kendoComboBox").text(),
 			"domainCode" : result.domainCode,
 			"domainName" : result.domainName,
 			"govAgencyCode" : result.govAgencyCode,
@@ -338,13 +342,19 @@
 		},
 		change : function(e){
 			var value = this.value();
-			$("#service").data("kendoComboBox").dataSource.read({
-				domain : value
-			});
+			if(value){
+
+				$("#serviceInfoSc").data("kendoComboBox").dataSource.read({
+					domain : value
+				});
+
+				$("#serviceInfoSc").data("kendoComboBox").select(-1);
+			}
+			
 		}
 	});
 
-	$("#service").kendoComboBox({
+	$("#serviceInfoSc").kendoComboBox({
 		placeholder : "Chọn thủ tục",
 		dataTextField:"serviceName",
 		dataValueField:"serviceInfoId",
@@ -372,16 +382,33 @@
 			},
 			schema:{
 				data:"data",
-				total:"total"
+				total:"total",
+				model : {
+					id : "serviceInfoId",
+					fields : {
+						serviceName : {
+							type: "string"
+						}
+					}
+				}
 			}
 		},
 		change : function(e){
-			var domainCode = $("#service").data("kendoComboBox").dataItem().domainCode;
-			console.log(domainCode);
-			if(domainCode){
-				$("#domainCode").data("kendoComboBox").value(domainCode);
-				$("#domainCode").data("kendoComboBox")._isSelect = false;
+			console.log(this.value());
+			try {
+				var domainCode = $("#serviceInfoSc").data("kendoComboBox").dataItem().domainCode;
+				console.log(domainCode);
+				if(domainCode){
+					$("#domainCode").data("kendoComboBox").value(domainCode);
+					$("#domainCode").data("kendoComboBox")._isSelect = false;
+				}
+			}catch (e) {
+				console.log(e);
 			}
+			
+		},
+		dataBound : function(){
+			$(".k-clear-value").addClass("k-hidden")
 		}
 	});
 </script>

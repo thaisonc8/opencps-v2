@@ -23,12 +23,14 @@ import org.opencps.datamgt.constants.HolidayTerm;
 import org.opencps.datamgt.exception.NoSuchDictItemException;
 import org.opencps.datamgt.model.DictCollection;
 import org.opencps.datamgt.model.DictItem;
+import org.opencps.datamgt.model.DictItemGroup;
 import org.opencps.datamgt.service.DictCollectionLocalServiceUtil;
 import org.opencps.datamgt.service.base.DictItemLocalServiceBaseImpl;
 
 import com.liferay.asset.kernel.exception.DuplicateCategoryException;
 import com.liferay.document.library.kernel.model.DLFileEntry;
 import com.liferay.document.library.kernel.service.DLFileEntryLocalServiceUtil;
+import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.NoSuchUserException;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.SystemException;
@@ -56,6 +58,7 @@ import com.liferay.portal.kernel.search.generic.MultiMatchQuery;
 import com.liferay.portal.kernel.search.generic.TermQueryImpl;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.OrderByComparator;
 import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
@@ -102,8 +105,11 @@ public class DictItemLocalServiceImpl extends DictItemLocalServiceBaseImpl {
 			String itemNameEN, String itemDescription, long parentItemId, String sibling, int level, String metaData,
 			ServiceContext serviceContext) throws DuplicateCategoryException, UnauthenticationException,
 			UnauthorizationException, NoSuchUserException, NoSuchDictItemException, SystemException {
-
-		DictItem dictColl = dictItemPersistence.fetchByF_dictItemCode(itemCode, groupId);
+		// KhoaVD sua tam cho nay
+		// DictItem dictColl =
+		// dictItemPersistence.fetchByF_dictItemCode(itemCode, groupId);
+		DictItem dictColl = dictItemPersistence.fetchByF_dictItemCode_dictCollectionId(itemCode, dictCollectionId,
+				groupId);
 
 		if (Validator.isNotNull(dictColl)) {
 
@@ -135,6 +141,8 @@ public class DictItemLocalServiceImpl extends DictItemLocalServiceBaseImpl {
 
 		DictItem dictItem = dictItemPersistence.create(dictItemId);
 
+		sibling = getSibling(groupId, dictCollectionId, parentItemId, sibling, level);
+
 		String treeIndex = getTreeIndex(dictItemId, parentItemId, sibling);
 
 		// Group instance
@@ -150,13 +158,13 @@ public class DictItemLocalServiceImpl extends DictItemLocalServiceBaseImpl {
 
 		// Other fields
 		dictItem.setDictCollectionId(dictCollectionId);
-		itemCode = itemCode.toUpperCase();
+		itemCode = itemCode;
 		dictItem.setItemCode(itemCode);
 		dictItem.setItemName(itemName);
 		dictItem.setItemNameEN(itemNameEN);
 		dictItem.setItemDescription(itemDescription);
 		dictItem.setParentItemId(parentItemId);
-		dictItem.setSibling(sibling);
+		dictItem.setSibling(Validator.isNotNull(sibling) ? sibling : String.valueOf(1));
 		dictItem.setTreeIndex(treeIndex);
 		dictItem.setLevel(StringUtil.count(treeIndex, StringPool.PERIOD));
 		dictItem.setMetaData(metaData);
@@ -169,6 +177,136 @@ public class DictItemLocalServiceImpl extends DictItemLocalServiceBaseImpl {
 		dictItemPersistence.update(dictItem);
 
 		return dictItem;
+	}
+
+	@Indexable(type = IndexableType.REINDEX)
+	public DictItem updateDictItemListener(long userId, long dictItemId, long dictCollectionId, String itemCode,
+			String itemName, String itemNameEN, String itemDescription, long parentItemId, String sibling, int level,
+			String metaData, ServiceContext serviceContext)
+			throws DuplicateCategoryException, UnauthenticationException, UnauthorizationException, NoSuchUserException,
+			NotFoundException, PortalException {
+
+		Date now = new Date();
+
+		User user = userPersistence.findByPrimaryKey(userId);
+
+		DictItem dictItem = dictItemPersistence.fetchByPrimaryKey(dictItemId);
+
+		DictItem dictColl = dictItemPersistence.fetchByF_dictItemCode(itemCode, dictItem.getGroupId());
+
+		if (Validator.isNotNull(dictColl) && dictColl.getDictItemId() != dictItemId) {
+
+			throw new DuplicateCategoryException();
+
+		}
+
+		if (Validator.isNull(dictItem)) {
+			throw new NotFoundException();
+		}
+
+		// Audit fields
+		dictItem.setUserId(user.getUserId());
+		dictItem.setUserName(user.getFullName());
+		dictItem.setModifiedDate(serviceContext.getCreateDate(now));
+
+		// Other fields
+		dictItem.setDictCollectionId(dictCollectionId);
+		dictItem.setItemCode(itemCode);
+		dictItem.setItemName(itemName);
+		dictItem.setItemNameEN(itemNameEN);
+		dictItem.setItemDescription(itemDescription);
+		dictItem.setParentItemId(parentItemId);
+		dictItem.setSibling(sibling);
+		dictItem.setMetaData(metaData);
+
+		String treeIndex = getTreeIndex(dictItemId, parentItemId, sibling);
+
+		dictItem.setTreeIndex(treeIndex);
+		dictItem.setLevel(StringUtil.count(treeIndex, StringPool.PERIOD));
+		// referent dictcollection
+		BaseModel<?> baseModel = DictCollectionLocalServiceUtil.fetchDictCollection(dictCollectionId);
+
+		dictItem.setExpandoBridgeAttributes(baseModel);
+		// dictItem.setExpandoBridgeAttributes(serviceContext);
+
+		dictItemPersistence.update(dictItem);
+
+		return dictItem;
+	}
+
+	/**
+	 * @param parentItemId
+	 * @return
+	 */
+	public List<DictItem> findByF_parentItemId(long parentItemId) {
+
+		return dictItemPersistence.findByF_parentItemId(parentItemId);
+	}
+
+	protected String getSibling(long groupId, long dictCollectionId, long parentItemId, String sibling, int level) {
+
+		if (parentItemId == 0) {
+
+		} else {
+
+			DictItem parentItem = dictItemPersistence.fetchByPrimaryKey(parentItemId);
+
+			level = Validator.isNotNull(parentItem) ? (parentItem.getLevel() + 1) : 0;
+		}
+
+		DictItem dictItem = dictItemPersistence.fetchByF_parentItemId_level_Last(groupId, dictCollectionId,
+				parentItemId, level, null);
+		if ((Validator.isNotNull(dictItem) && sibling.equals("0")) || sibling.equals("0")) {
+			try {
+				sibling = GetterUtil.getInteger(dictItem.getSibling(), 1) + 1 + StringPool.BLANK;
+			} catch (Exception e) {
+				sibling = String.valueOf(1);
+			}
+		}
+		return sibling;
+
+	}
+
+	protected String getTreeIndex(long dictItemId, long dictParentItemId, String sibling)
+			throws NoSuchDictItemException {
+
+		if (Validator.isNull(sibling)) {
+			sibling = String.valueOf(1);
+		}
+
+		if (dictParentItemId == 0) {
+
+			String ext = "";
+
+			for (int i = 0; i < 4 - sibling.length(); i++) {
+
+				ext += "0";
+
+			}
+
+			return ext + sibling;
+
+		} else if (dictParentItemId > 0) {
+
+			DictItem parentItem = dictItemPersistence.findByPrimaryKey(dictParentItemId);
+
+			// if(Validator.isNull(sibling) || GetterUtil.get(sibling, 0) == 0){
+			// DictItem ett =
+			// dictItemPersistence.fetchByF_parentItemId_Last(parentItem.getDictItemId(),
+			// null);
+			// sibling
+			// }
+
+			String ext = "";
+
+			for (int i = 0; i < 4 - sibling.length(); i++) {
+				ext += "0";
+			}
+
+			return parentItem.getTreeIndex() + StringPool.PERIOD + ext + Integer.toHexString(Integer.valueOf(sibling));
+		} else {
+			throw new NoSuchDictItemException();
+		}
 	}
 
 	@Indexable(type = IndexableType.DELETE)
@@ -230,10 +368,19 @@ public class DictItemLocalServiceImpl extends DictItemLocalServiceBaseImpl {
 			throw new UnauthorizationException();
 		}
 		DictItem dictItem = dictItemPersistence.fetchByF_dictItemCode(itemCode, groupId);
-
+		
+		List<DictItemGroup> lsDictItem = dictItemGroupPersistence.findByF_dictItemId(groupId, dictItem.getPrimaryKey());
+		
+		_log.info("DictItemGroupSize_" + dictItem.getPrimaryKey() + "_" + groupId + "_" + lsDictItem.size());
+		
 		try {
 
 			dictItem = dictItemLocalService.deleteDictItem(dictItem.getDictItemId());
+			
+			//remove DictItem
+			for (DictItemGroup dig : lsDictItem) {
+				dictItemGroupPersistence.remove(dig);
+			}
 
 		} catch (NoSuchDictItemException e) {
 			throw new NotFoundException();
@@ -284,8 +431,12 @@ public class DictItemLocalServiceImpl extends DictItemLocalServiceBaseImpl {
 		User user = userPersistence.findByPrimaryKey(userId);
 
 		DictItem dictItem = dictItemPersistence.fetchByPrimaryKey(dictItemId);
-
-		DictItem dictColl = dictItemPersistence.fetchByF_dictItemCode(itemCode, dictItem.getGroupId());
+		// Khoavd tam sua
+		// DictItem dictColl =
+		// dictItemPersistence.fetchByF_dictItemCode(itemCode,
+		// dictItem.getGroupId());
+		DictItem dictColl = dictItemPersistence.fetchByF_dictItemCode_dictCollectionId(itemCode, dictCollectionId,
+				dictItem.getGroupId());
 
 		if (Validator.isNotNull(dictColl) && dictColl.getDictItemId() != dictItemId) {
 
@@ -327,44 +478,6 @@ public class DictItemLocalServiceImpl extends DictItemLocalServiceBaseImpl {
 		return dictItem;
 	}
 
-	protected String getTreeIndex(long dictItemId, long dictParentItemId, String sibling)
-			throws NoSuchDictItemException, SystemException {
-
-		if (dictParentItemId == 0) {
-
-			String ext = "";
-
-			for (int i = 0; i < 4 - sibling.length(); i++) {
-
-				ext += "0";
-
-			}
-
-			return ext + sibling;
-
-		} else if (dictParentItemId > 0) {
-
-			DictItem parentItem = dictItemPersistence.findByPrimaryKey(dictParentItemId);
-
-			// if(Validator.isNull(sibling) || GetterUtil.get(sibling, 0) == 0){
-			// DictItem ett =
-			// dictItemPersistence.fetchByF_parentItemId_Last(parentItem.getDictItemId(),
-			// null);
-			// sibling
-			// }
-
-			String ext = "";
-
-			for (int i = 0; i < 4 - sibling.length(); i++) {
-				ext += "0";
-			}
-
-			return parentItem.getTreeIndex() + StringPool.PERIOD + ext + Integer.toHexString(Integer.valueOf(sibling));
-		} else {
-			throw new NoSuchDictItemException();
-		}
-	}
-
 	public Hits luceneSearchEngine(LinkedHashMap<String, Object> params, Sort[] sorts, int start, int end,
 			SearchContext searchContext) throws ParseException, SearchException {
 		Indexer<DictItem> indexer = IndexerRegistryUtil.nullSafeGetIndexer(DictItem.class);
@@ -387,10 +500,13 @@ public class DictItemLocalServiceImpl extends DictItemLocalServiceBaseImpl {
 		String dictCollectionId = (String) params.get(DictItemTerm.DICT_COLLECTION_ID);
 		String dictItemParentId = String.valueOf(params.get(DictItemTerm.PARENT_ITEM_ID));
 		String parentItemCode = (String) params.get(DictItemTerm.PARENT_ITEM_CODE);
-
+		
+		/*
+		 * ThanhNv: fixbug get all DictItem in a collection
 		if (Validator.isNull(parentItemCode)) {
 			parentItemCode = "0";
 		}
+		*/
 
 		String dictItemCode = (String) params.get(DictItemTerm.ITEM_CODE);
 		String keywords = (String) params.get("keywords");
@@ -516,11 +632,11 @@ public class DictItemLocalServiceImpl extends DictItemLocalServiceBaseImpl {
 		String dictCollectionId = (String) params.get(DictItemTerm.DICT_COLLECTION_ID);
 		String dictItemParentId = String.valueOf(params.get(DictItemTerm.PARENT_ITEM_ID));
 		String parentItemCode = (String) params.get(DictItemTerm.PARENT_ITEM_CODE);
-		
+
 		if (Validator.isNull(parentItemCode)) {
 			parentItemCode = "0";
 		}
-		
+
 		String dictItemCode = (String) params.get(DictItemTerm.ITEM_CODE);
 		String keywords = (String) params.get("keywords");
 		String groupId = String.valueOf(params.get("groupId"));
@@ -632,6 +748,19 @@ public class DictItemLocalServiceImpl extends DictItemLocalServiceBaseImpl {
 
 	}
 
+	public List<DictItem> findByF_dictCollectionId(long dictCollectionId, int stat, int end,
+			OrderByComparator<DictItem> comparator) {
+
+		return dictItemPersistence.findByF_dictCollectionId(dictCollectionId, stat, end, comparator);
+
+	}
+
+	public List<DictItem> findByF_dictCollectionId_parentItemId(long dictCollectionId, long parentItemId) {
+
+		return dictItemPersistence.findByF_dictCollectionId_parentItemId(dictCollectionId, parentItemId);
+
+	}
+
 	public boolean initDictItem(long groupId, long dictCollectionId) {
 
 		boolean result = false;
@@ -647,10 +776,19 @@ public class DictItemLocalServiceImpl extends DictItemLocalServiceBaseImpl {
 	}
 
 	public DictItem fetchByF_dictItemCode(String itemCode, long dictCollectionId, long groupId) {
-		
-		return dictItemPersistence.fetchByIC_DCI(itemCode, dictCollectionId);
-		//return dictItemPersistence.fetchByF_dictItemCode_dictCollectionId(itemCode, dictCollectionId, groupId);
 
+		return dictItemPersistence.fetchByIC_DCI(itemCode, dictCollectionId);
+		// return
+		// dictItemPersistence.fetchByF_dictItemCode_dictCollectionId(itemCode,
+		// dictCollectionId, groupId);
+
+	}
+
+	public List<DictItem> findByF_treeIndex(long dictCollectionId, long parentItemId, String treeIndex,
+			OrderByComparator<DictItem> comparator) {
+
+		return dictItemPersistence.findByF_treeIndex(dictCollectionId, parentItemId,
+				treeIndex + StringPool.PERIOD + StringPool.PERCENT, QueryUtil.ALL_POS, QueryUtil.ALL_POS, comparator);
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(DictItemLocalServiceImpl.class);

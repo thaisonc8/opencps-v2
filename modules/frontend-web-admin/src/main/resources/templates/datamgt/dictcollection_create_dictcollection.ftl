@@ -1,6 +1,4 @@
-<#if (Request)??>
 <#include "init.ftl">
-</#if>
 
 <div class="modal-header">
 
@@ -60,7 +58,9 @@
 				
 				<div class="col-xs-6 col-sm-6 col-md-6 col-lg-6">
 				
-					<button class="btn btn-sm btn-active btn-sm pull-right" id="_collectionAdd_submitBtn" name="_collectionAdd_submitBtn" type="button">
+					<button class="btn btn-sm btn-active pull-right" 
+						id="_collectionAdd_submitBtn" name="_collectionAdd_submitBtn" type="button"
+						data-loading-text="<i class='fa fa-spinner fa-spin '></i> Đang lưu thông tin...">
 						<i class="fa fa-check-circle"></i>
 						<span class="lfr-btn-label">Xác nhận</span>
 					</button>
@@ -103,7 +103,7 @@
 			return;
 		} else {
 
-			var _collectionAdd_BaseUrl = "${api.server}/dictcollections";
+			var _collectionAdd_BaseUrl = "${api.endpoint}/dictcollections";
 
 			$.ajax({
 				url: _collectionAdd_BaseUrl,
@@ -111,10 +111,10 @@
 					"groupId": ${groupId},
 				},
 				data: {
-					collectionName: $( "#_collectionAdd_collectionName" ).val(),
-					collectionCode: $( "#_collectionAdd_collectionCode" ).val(),
-					description: $( "#_collectionAdd_description" ).val(),
-					collectionNameEN: $( "#_collectionAdd_collectionNameEN" ).val(),
+					collectionName: $( "#_collectionAdd_collectionName" ).val().trim(),
+					collectionCode: $( "#_collectionAdd_collectionCode" ).val().trim(),
+					description: $( "#_collectionAdd_description" ).val().trim(),
+					collectionNameEN: $( "#_collectionAdd_collectionNameEN" ).val().trim(),
 				},
 				type: 'POST',
 				dataType: 'json',
@@ -124,8 +124,9 @@
 					var dataSource = $("#_collection_listView").getKendoListView().dataSource;
 					
 					$("#_collection_hidden_new_id").val(data.collectionCode);
-					dataSource.pushCreate(data);
-					$('#dictCollectionCounterList').html(dataSource.total());
+					dataSource.read();
+					//dataSource.pushCreate(data);
+					//$('#dictCollectionCounterList').html(dataSource.total());
 					$("#modal").trigger({ type: "click" });
 					showMessageToastr("success", 'Yêu cầu của bạn được xử lý thành công!');
 					

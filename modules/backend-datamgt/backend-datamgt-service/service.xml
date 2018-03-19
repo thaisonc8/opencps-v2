@@ -74,7 +74,7 @@
 
 		<!-- Order -->
 		<order by="asc">
-			<order-column name="treeIndex" />
+			<order-column name="sibling" />
 		</order>
 
 		<!-- Finder -->
@@ -99,17 +99,30 @@
 			<finder-column name="groupId"></finder-column>
 		</finder>
 		
+		<finder return-type="Collection" name="F_parentItemId">
+			<finder-column name="parentItemId"></finder-column>
+		</finder>
+		
+		<finder return-type="Collection" name="F_parentItemId_level">
+			<finder-column name="groupId"></finder-column>
+			<finder-column name="dictCollectionId"></finder-column>
+			<finder-column name="parentItemId"></finder-column>
+			<finder-column name="level"></finder-column>
+		</finder>
 		
 		<finder return-type="DictItem" name="IC_DCI">
 			<finder-column name="itemCode"/>
 			<finder-column name="dictCollectionId"/>
 		</finder>
-		
-		
-		<finder return-type="Collection" name="F_parentItemId">
-			<finder-column name="parentItemId"></finder-column>
-		</finder>
-		
+        <finder name="F_treeIndex" return-type="Collection">
+            <finder-column name="dictCollectionId"></finder-column>
+            <finder-column name="parentItemId"></finder-column>
+            <finder-column name="treeIndex" comparator="LIKE"></finder-column>
+        </finder>
+        <finder name="F_dictCollectionId_parentItemId" return-type="Collection">
+            <finder-column name="dictCollectionId"></finder-column>
+            <finder-column name="parentItemId"></finder-column>
+        </finder>
 	</entity>
 
 	<entity name="DictGroup" uuid="true" local-service="true"
@@ -147,6 +160,18 @@
 			<finder-column name="groupId"></finder-column>
 		</finder>
 		
+		<!-- Finder -->
+		<finder return-type="DictGroup" name="GC_GI_DCI">
+			<finder-column name="groupCode"/>
+			<finder-column name="groupId"/>
+			<finder-column name="dictCollectionId"/>
+		</finder>
+		
+		<finder return-type="Collection" name="GID_DC">
+			<finder-column name="dictCollectionId"/>
+			<finder-column name="groupId"/>
+		</finder>
+		
 	</entity>
 	
 	<entity name="DictItemGroup" uuid="true" local-service="true"
@@ -169,6 +194,7 @@
 
 		<column name="dictGroupId" type="long" />
 		<column name="dictItemId" type="long" />
+		<column name="dictGroupName" type= "String" />
 
 		<!-- Order -->
 		<order by="asc">
@@ -283,8 +309,12 @@
 
 		<!-- Order -->
 		<order by="asc">
-			<order-column name="createDate" />
+			<order-column name="modifiedDate" />
 		</order>
+		
+		<finder return-type="Collection" name="F_groupId" where=" ( content is not null ) ">
+			<finder-column name="groupId"></finder-column>
+		</finder>
 
 	</entity>
 	
@@ -347,5 +377,60 @@
 		</order>
 
 	</entity>
+	
+	<entity name="FileAttach" local-service="true" remote-service="false"
+		table="m_fileattach">
 
+		<!-- PK fields -->
+
+		<column name="fileAttachId" primary="true" type="long" />
+
+		<!-- Group instance -->
+
+		<column name="groupId" type="long" />
+
+		<!-- Audit fields -->
+
+		<column name="companyId" type="long" />
+		<column name="userId" type="long" />
+		<column name="userName" type="String" />
+		<column name="createDate" type="Date" />
+		<column name="modifiedDate" type="Date" />
+
+		<!-- Other fields -->
+
+		<column name="className" type="String" />
+		<column name="classPK" type="String" />
+		<column name="fullName" type="String" />
+		<column name="email" type="String" />
+		<column name="fileEntryId" type="long" />
+		<column name="source" type="String" />
+		<column name="sourceUrl" type="String" />
+		<column name="docFileId" type="long" />
+		<!-- Order -->
+        <column name="fileName" type="String"></column>
+
+		<order by="asc">
+			<order-column name="createDate" />
+		</order>
+
+		<finder return-type="Collection" name="F_docFileId">
+
+			<finder-column name="groupId"></finder-column>
+			<finder-column name="className"></finder-column>
+			<finder-column name="classPK"></finder-column>
+			<finder-column name="docFileId"></finder-column>
+
+		</finder>
+
+		<finder return-type="Collection" name="F_className_classPK">
+
+			<finder-column name="groupId"></finder-column>
+			<finder-column name="className"></finder-column>
+			<finder-column name="classPK"></finder-column>
+
+		</finder>
+
+	</entity>
+	
 </service-builder>

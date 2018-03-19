@@ -23,6 +23,7 @@ import org.opencps.dossiermgt.model.ProcessStep;
 import org.opencps.dossiermgt.model.ProcessStepRole;
 import org.opencps.dossiermgt.model.ServiceProcess;
 import org.opencps.dossiermgt.model.ServiceProcessRole;
+import org.opencps.dossiermgt.service.ProcessActionLocalServiceUtil;
 
 import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.User;
@@ -220,7 +221,7 @@ public class ServiceProcessUtils {
 
 		for (Document doc : documents) {
 			ProcessActionDataModel model = new ProcessActionDataModel();
-
+			
 			model.setProcessActionId(doc.get(Field.ENTRY_CLASS_PK));
 			model.setActionCode(doc.get(ProcessActionTerm.ACTION_CODE));
 			model.setActionName(doc.get(ProcessActionTerm.ACTION_NAME));
@@ -242,7 +243,24 @@ public class ServiceProcessUtils {
 			model.setMakeBriefNote(doc.get(ProcessActionTerm.MAKE_BRIEF_NOTE));
 			model.setSyncActionCode(doc.get(ProcessActionTerm.SYNC_ACTION_CODE));
 			model.setRollbackable(doc.get(ProcessActionTerm.ROLLBACKABLE));
+			model.setCreateDossierNo(Boolean.getBoolean(doc.get(ProcessActionTerm.CREATE_DOSSIER_NO)));
+			model.seteSignature(Boolean.getBoolean(doc.get(ProcessActionTerm.ESIGNATURE)));
+			
+			if (Validator.isNull(doc.get(ProcessActionTerm.CONFIG_NOTE))) {
+				ProcessAction action = ProcessActionLocalServiceUtil.fetchProcessAction(GetterUtil.getLong(doc.get(Field.ENTRY_CLASS_PK)));
+				
+				if (Validator.isNotNull(action)) {
+					String configNote = action.getConfigNote();
+					
+					model.setConfigNote(configNote);
 
+				}
+			} else {
+				model.setConfigNote(doc.get(ProcessActionTerm.CONFIG_NOTE));
+
+			}
+			
+			
 			outputs.add(model);
 		}
 
@@ -307,7 +325,11 @@ public class ServiceProcessUtils {
 
 		model.getReturnDossierFiles()
 				.addAll(ListUtil.toList(StringUtil.split(action.getReturnDossierFiles(), StringPool.COMMA)));
-
+		
+		model.setCreateDossierNo(action.getCreateDossierNo());
+		model.seteSignature(action.getESignature());
+		model.setConfigNote(action.getConfigNote());
+		
 		return model;
 	}
 

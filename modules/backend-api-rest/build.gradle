@@ -34,7 +34,9 @@ dependencies {
 	compileOnly project(":modules:backend-communication:backend-communication-service")
 	
 	compileOnly project(":modules:backend-auth")
-}
+	
+	testCompile group: "junit", name: "junit", version: "4.12"
+}	
 
 sourceSets {
 	generated {

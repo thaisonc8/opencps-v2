@@ -68,32 +68,37 @@
 		</div>
 	</div>
 
-
 	<script type="text/javascript">
 		(function($){
 			var serviceProcessActionDataSource = new kendo.data.DataSource({
 				transport: {
 					read: function(options) {
-						$.ajax({
-							url: "${api.server}" + "/serviceprocesses/" + $("#btn_save_service_process").attr("data-pk") + "/actions",
-							type: "GET",
-							dataType: "json",
-							headers: {"groupId": ${groupId}},
-							data: {
-								keywords: options.data.keywords,
-								page: options.data.page,
-								pageSize: options.data.pageSize
-							},
-							success: function(result) {
-								options.success(result);
-							},
-							error: function(result) {
-								options.error(result);
-								notification.show({
-									message: "Xẩy ra lỗi, vui lòng thử lại"
-								}, "error");
-							}
-						});
+						if ($("#btn_save_service_process").attr("data-pk")){
+							$.ajax({
+								url: "${api.server}" + "/serviceprocesses/" + $("#btn_save_service_process").attr("data-pk") + "/actions",
+								type: "GET",
+								dataType: "json",
+								headers: {"groupId": ${groupId}},
+								data: {
+									keywords: options.data.keywords,
+									page: options.data.page,
+									pageSize: options.data.pageSize
+								},
+								success: function(result) {
+									if(result.data){
+										options.success(result);
+									}else {
+										options.success({
+											"data" : [],
+											"total" : 0
+										});
+									}
+								},
+								error: function(result) {
+									options.error(result);
+								}
+							});
+						}
 					},
 					destroy: function(options) {
 						$.ajax({
@@ -191,104 +196,46 @@
 					paymentFee: serviceProcessAction.paymentFee,
 					syncActionCode: serviceProcessAction.syncActionCode,
 					rollbackable: serviceProcessAction.rollbackable,
-					dossiertemplatesFileFilter: ""
+					dossiertemplatesFileFilter: "",
+					createDossierNo : serviceProcessAction.createDossierNo,
+					eSignature : serviceProcessAction.eSignature
+
 				});
 
 				kendo.bind($("#serviceprocesses_detail_form_action"), viewModel);
 
 				initStepCombobox();
 
-				var controlForm = $('.service-process-create-dossier-file-form-action-controls');
+				
 
 				if (typeof serviceProcessAction.createDossierFiles === 'number'){
-
-					var currentEntry = $('.service-process-create-dossier-file-form-action-entry:last');
-					currentEntry.find('select').val(serviceProcessAction.createDossierFiles);
+					console.log("type number");
+					$("#createDossierFiles").data("kendoMultiSelect").value(serviceProcessAction.createDossierFiles);
+					
 
 				} else if (typeof serviceProcessAction.createDossierFiles === 'string'){
-
+					console.log("type string");
 					var createDossierFileArr = serviceProcessAction.createDossierFiles.split(",");
-
-					var currentEntry = $('.service-process-create-dossier-file-form-action-entry:last');
-					currentEntry.find('select').val(createDossierFileArr[0]);
-
-					for (var i = 1; i < createDossierFileArr.length; i++){
-						if (createDossierFileArr[i]){
-							var fileTemplateNo = createDossierFileArr[i];
-							if (fileTemplateNo){
-								var currentEntry = $('.service-process-create-dossier-file-form-action-entry:last');
-								var newEntry = $(currentEntry.clone()).appendTo(controlForm);
-								newEntry.find('select').val(fileTemplateNo);
-								controlForm.find('.service-process-create-dossier-file-form-action-entry:not(:last) .btn-add-action-create-dossier-file')
-								.removeClass('btn-add-action-create-dossier-file').addClass('btn-remove')
-								.removeClass('btn-success').addClass('btn-danger')
-								.html('<span class="glyphicon glyphicon-minus"></span>');
-							}
-						}
-					}
+					$("#createDossierFiles").data("kendoMultiSelect").value(createDossierFileArr);
+					
 				} else if (serviceProcessAction.createDossierFiles){
-
-					var currentEntry = $('.service-process-create-dossier-file-form-action-entry:last');
-					currentEntry.find('select').val(serviceProcessAction.createDossierFiles[0]);
-
-					for (var i = 1; i < serviceProcessAction.createDossierFiles.length; i++){
-						var fileTemplateNo = serviceProcessAction.createDossierFiles[i];
-						if (fileTemplateNo){
-							var currentEntry = $('.service-process-create-dossier-file-form-action-entry:last');
-							var newEntry = $(currentEntry.clone()).appendTo(controlForm);
-							newEntry.find('select').val(fileTemplateNo);
-							controlForm.find('.service-process-create-dossier-file-form-action-entry:not(:last) .btn-add-action-create-dossier-file')
-							.removeClass('btn-add-action-create-dossier-file').addClass('btn-remove')
-							.removeClass('btn-success').addClass('btn-danger')
-							.html('<span class="glyphicon glyphicon-minus"></span>');
-						}
-					}
+					$("#createDossierFiles").data("kendoMultiSelect").value(serviceProcessAction.createDossierFiles);
 				}
 
-				controlForm = $('.service-process-return-dossier-file-form-action-controls');
+				
 
 				if (typeof serviceProcessAction.returnDossierFiles === 'number'){
-					var currentEntry = $('.service-process-return-dossier-file-form-action-entry:last');
-					currentEntry.find('select').val(serviceProcessAction.returnDossierFiles);
+
+					$("#returnDossierFiles").data("kendoMultiSelect").value(serviceProcessAction.returnDossierFiles);
+
 				}  else if (typeof serviceProcessAction.returnDossierFiles === 'string'){
 
 					var returnDossierFileArr = serviceProcessAction.returnDossierFiles.split(",");
 
-					var currentEntry = $('.service-process-return-dossier-file-form-action-entry:last');
-					currentEntry.find('select').val(returnDossierFileArr[0]);
+					$("#returnDossierFiles").data("kendoMultiSelect").value(returnDossierFileArr);
 
-					for (var i = 1; i < returnDossierFileArr.length; i++){
-						if (returnDossierFileArr[i]){
-							var fileTemplateNo = returnDossierFileArr[i];
-							if (fileTemplateNo){
-								var currentEntry = $('.service-process-return-dossier-file-form-action-entry:last');
-								var newEntry = $(currentEntry.clone()).appendTo(controlForm);
-								newEntry.find('select').val(fileTemplateNo);
-								controlForm.find('.service-process-return-dossier-file-form-action-entry:not(:last) .btn-add-action-return-dossier-file')
-								.removeClass('btn-add-action-return-dossier-file').addClass('btn-remove')
-								.removeClass('btn-success').addClass('btn-danger')
-								.html('<span class="glyphicon glyphicon-minus"></span>');
-							}
-						}
-					}
 				} else if (serviceProcessAction.returnDossierFiles){
-					var currentEntry = $('.service-process-return-dossier-file-form-action-entry:last');
-					currentEntry.find('select').val(serviceProcessAction.returnDossierFiles[0]);
-					for (var i = 1; i < serviceProcessAction.returnDossierFiles.length; i++){
-						var fileTemplateNo = serviceProcessAction.returnDossierFiles[i];
-						if (fileTemplateNo){
-							var currentEntry = $('.service-process-return-dossier-file-form-action-entry:last');
-
-							var newEntry = $(currentEntry.clone()).appendTo(controlForm);
-
-							newEntry.find('select').val(fileTemplateNo);
-
-							controlForm.find('.service-process-return-dossier-file-form-action-entry:not(:last) .btn-add-action-return-dossier-file')
-							.removeClass('btn-add-action-return-dossier-file').addClass('btn-remove')
-							.removeClass('btn-success').addClass('btn-danger')
-							.html('<span class="glyphicon glyphicon-minus"></span>');
-						}
-					}
+					$("#returnDossierFiles").data("kendoMultiSelect").value(serviceProcessAction.returnDossierFiles);
 				}
 
 				$("#btn_save_service_process_action").attr("data-pk", $(this).attr("data-pk"));
@@ -300,6 +247,7 @@
 				$("#serviceprocess_detail_formaction_container").hide();
 			});
 
+			$(document).off("click", "#btn_add_service_process_action");
 			$(document).on("click", "#btn_add_service_process_action", function(event){
 				event.preventDefault();
 				$("#serviceprocess_action_container").hide();
@@ -320,7 +268,9 @@
 					returnDossierFiles: "",
 					syncActionCode: "",
 					rollbackable: "",
-					dossiertemplatesFileFilter: ""
+					dossiertemplatesFileFilter: "",
+					createDossierNo : "",
+					eSignature : ""
 				});
 
 				initStepCombobox();
@@ -330,6 +280,7 @@
 				$("#btn_save_service_process_action").attr("data-pk", "");
 			});
 
+			$(document).off("click", "#btn_save_service_process_action");
 			$(document).on("click", "#btn_save_service_process_action", function(event){
 				event.preventDefault();
 
@@ -341,6 +292,9 @@
 				} else {
 					addServiceProcessAction(serviceProcessId);
 				}
+
+				/*$("#serviceprocess_action_container").show();
+				$("#serviceprocess_detail_formaction_container").hide();*/
 			});
 
 			var updateServiceProcessAction = function(serviceProcessId, actionId){
@@ -364,13 +318,16 @@
 							createDossierFiles: getCreateDossierFiles(),
 							returnDossierFiles: getReturnDossierFiles(),
 							syncActionCode: $("#syncActionCode").val(),
-							rollbackable: $("#rollbackable").prop("checked")
+							rollbackable: $("#rollbackable").prop("checked"),
+							createDossierNo : $("#createDossierNo").prop("checked"),
+							eSignature : $("#eSignature").prop("checked")
 						},
 						success: function(result) {
 							notification.show({
 								message: "Yêu cầu được thực hiện thành công"
 							}, "success");
-
+							$("#serviceprocess_action_container").show();
+							$("#serviceprocess_detail_formaction_container").hide();
 							// var serviceProcessAction = serviceProcessActionDataSource.get(actionId);
 
 							// serviceProcessAction.set("actionCode", $("#actionCode").val());
@@ -390,8 +347,7 @@
 
 							serviceProcessActionDataSource.read();
 
-							$("#serviceprocess_action_container").show();
-							$("#serviceprocess_detail_formaction_container").hide();
+							
 						},
 						error: function(result) {
 							if (result.responseJSON.description){
@@ -403,6 +359,9 @@
 									message: "Xẩy ra lỗi, vui lòng thử lại"
 								}, "error");
 							}
+
+							$("#serviceprocess_action_container").show();
+							$("#serviceprocess_detail_formaction_container").hide();
 						}
 					});
 				}
@@ -429,19 +388,26 @@
 							createDossierFiles: getCreateDossierFiles(),
 							returnDossierFiles: getReturnDossierFiles(),
 							syncActionCode: $("#syncActionCode").val(),
-							rollbackable: $("#rollbackable").prop("checked")
+							rollbackable: $("#rollbackable").prop("checked"),
+							createDossierNo : $("#createDossierNo").prop("checked"),
+							eSignature : $("#eSignature").prop("checked")
 						},
 						success: function(result) {
 							notification.show({
 								message: "Yêu cầu được thực hiện thành công"
 							}, "success");
 
+							$("#serviceprocess_action_container").show();
+							$("#serviceprocess_detail_formaction_container").hide();
+
 							serviceProcessActionDataSource.insert(0, {
 								"processActionId": result.processActionId,
 								"actionCode": $("#actionCode").val(),
 								"actionName": $("#actionName").val(),
 								"preStepCode": $("#preStepCode").val(),
+								"preStepName" : $("#preStepCode").data("kendoComboBox").text(),
 								"postStepCode": $("#postStepCode").val(),
+								"postStepName" : $("#postStepCode").data("kendoComboBox").text(),
 								"autoEvent": $("#autoEvent").val(),
 								"preCondition": $("#preCondition").val(),
 								"allowAssignUser": $("#allowAssignUser").prop("checked"),
@@ -452,10 +418,11 @@
 								"returnDossierFiles": getReturnDossierFiles(),
 								"syncActionCode": $("#syncActionCode").val(),
 								"rollbackable": $("#rollbackable").prop("checked"),
+								"createDossierNo" : $("#createDossierNo").prop("checked"),
+								"eSignature" : $("#eSignature").prop("checked")
 							});
 
-							$("#serviceprocess_action_container").show();
-							$("#serviceprocess_detail_formaction_container").hide();
+							
 						},
 						error: function(result) {
 							if (result.responseJSON.description){
@@ -467,6 +434,9 @@
 									message: "Xẩy ra lỗi, vui lòng thử lại"
 								}, "error");
 							}
+
+							$("#serviceprocess_action_container").show();
+							$("#serviceprocess_detail_formaction_container").hide();
 						}
 					});
 				}
@@ -474,17 +444,13 @@
 
 			function getCreateDossierFiles(){
 				var createDossierFiles = "";
-				$(".service-process-create-dossier-file-form-action-entry").each(function(){
-					createDossierFiles += $(this).find("select").val() + ",";
-				});
+				createDossierFiles = $("#createDossierFiles").data("kendoMultiSelect").value().join();
 				return createDossierFiles;
 			}
 
 			function getReturnDossierFiles(){
 				var returnDossierFiles = "";
-				$(".service-process-return-dossier-file-form-action-entry").each(function(){
-					returnDossierFiles += $(this).find("select").val() + ",";
-				});
+				returnDossierFiles = $("#returnDossierFiles").data("kendoMultiSelect").value().join();
 				return returnDossierFiles;
 			}
 
@@ -501,12 +467,12 @@
 					}, "error");
 					return false;
 				}
-				if ($("#allowAssignUser").prop("checked") && !$("#assignUserId").val()){
+				/*if ($("#allowAssignUser").prop("checked") && !$("#assignUserId").val()){
 					notification.show({
 						message: "Mời chọn người được phân công"
 					}, "error");
 					return false;
-				}
+				}*/
 				if ($("#requestPayment").prop("checked") && !$("#paymentFee").val()){
 					notification.show({
 						message: "Mời nhập phí"
@@ -517,11 +483,6 @@
 			}
 
 			function initStepCombobox(){
-				$(".service-process-create-dossier-file-form-action-entry:not(:last)").remove();
-				$(".service-process-return-dossier-file-form-action-entry:not(:last)").remove();
-
-				$(".service-process-create-dossier-file-form-action-entry:last").find("select").val("");
-				$(".service-process-return-dossier-file-form-action-entry:last").find("select").val("");
 
 				$("#preStepCode").kendoComboBox({
 					dataTextField: "stepName",

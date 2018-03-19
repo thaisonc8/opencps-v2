@@ -124,12 +124,12 @@ public class ServiceProcessActionsImpl implements ServiceProcessActions {
 	}
 
 	@Override
-	public ProcessStep updateProcessStep(long groupId, String stepCode, String stepName,
+	public ProcessStep updateProcessStep(long groupId, String oldStepCode, String newStepCode, String stepName,
 			long serviceProcessId, String sequenceNo, String dossierStatus, String dossierSubStatus, int durationCount,
 			String customProcessUrl, String stepInstruction, String briefNote, boolean editable, ServiceContext context)
 			throws PortalException {
 		
-		ProcessStep step = ProcessStepLocalServiceUtil.fetchBySC_GID(stepCode, groupId, serviceProcessId);
+		ProcessStep step = ProcessStepLocalServiceUtil.fetchBySC_GID(oldStepCode, groupId, serviceProcessId);
 		
 		long processStepId = 0;
 		
@@ -137,7 +137,7 @@ public class ServiceProcessActionsImpl implements ServiceProcessActions {
 			processStepId = step.getProcessStepId();
 		}
 		
-		return ProcessStepLocalServiceUtil.updateProcessStep(groupId, processStepId, stepCode, stepName,
+		return ProcessStepLocalServiceUtil.updateProcessStep(groupId, processStepId, newStepCode, stepName,
 				serviceProcessId, sequenceNo, dossierStatus, dossierSubStatus, durationCount, customProcessUrl,
 				stepInstruction, briefNote, editable, context);
 	}
@@ -207,6 +207,7 @@ public class ServiceProcessActionsImpl implements ServiceProcessActions {
 		return ProcessActionLocalServiceUtil.getProcessAction(processActionId);
 	}
 
+	@Deprecated
 	@Override
 	public ProcessAction updateProcessAction(long groupId, long processActionId, long serviceProcessId,
 			String preStepCode, String postStepCode, String autoEvent, String preCondition, String actionCode,
@@ -225,5 +226,23 @@ public class ServiceProcessActionsImpl implements ServiceProcessActions {
 		
 		return ProcessActionLocalServiceUtil.removeProcessAction(processActionId);
 	}
+
+	@Override
+	public ProcessAction updateProcessAction(long groupId, long processActionId, long serviceProcessId,
+			String preStepCode, String postStepCode, String autoEvent, String preCondition, String actionCode,
+			String actionName, boolean allowAssignUser, long assignUserId, boolean requestPayment, String paymentFee,
+			String createDossierFiles, String returnDossierFiles, String makeBriefNote, String syncActionCode,
+			boolean rollbackable, boolean createDossierNo, boolean eSignature, String configNote, ServiceContext context)
+			throws PortalException {
+		
+		
+		
+		return ProcessActionLocalServiceUtil.updateProcessAction(groupId, processActionId, serviceProcessId,
+				preStepCode, postStepCode, autoEvent, preCondition, actionCode, actionName, allowAssignUser,
+				assignUserId, requestPayment, paymentFee, createDossierFiles, returnDossierFiles, makeBriefNote,
+				syncActionCode, rollbackable, createDossierNo, eSignature,configNote, context);
+	}
+	
+	
 
 }

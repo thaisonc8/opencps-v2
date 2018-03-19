@@ -1,5 +1,6 @@
 package org.opencps.dossiermgt.action.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.opencps.dossiermgt.exception.DossierAccessException;
@@ -12,6 +13,8 @@ import org.opencps.dossiermgt.model.ServiceProcessRole;
 import org.opencps.dossiermgt.service.ProcessStepLocalServiceUtil;
 import org.opencps.dossiermgt.service.ProcessStepRoleLocalServiceUtil;
 import org.opencps.dossiermgt.service.ServiceProcessRoleLocalServiceUtil;
+import org.opencps.usermgt.model.Applicant;
+import org.opencps.usermgt.service.ApplicantLocalServiceUtil;
 
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.service.UserLocalServiceUtil;
@@ -19,17 +22,30 @@ import com.liferay.portal.kernel.util.Validator;
 
 public class DossierPermission {
 
+	public boolean isCitizen(long userId) {
+		try {
+			Applicant applicant = ApplicantLocalServiceUtil.fetchByMappingID(userId);
+			if (applicant != null) {
+				return true;
+			}
+			return false;
+		} catch (Exception e) {
+			return false;
+		}
+	}
+
 	public void hasCreateDossier(long groupId, long userId, String serviceInfoCode, String govAgencyCode,
 			String dossierTemplateNo) throws PortalException {
 		// TODO ...
 	}
-	
+
 	public void hasGetDossiers(long groupId, long userId, String secetKey) throws PortalException {
-		
+
 	}
-	
-	public void isAllowSubmittingDossiers(long groupId, long userId, long dossierId, String referanceUid) throws PortalException {
-		
+
+	public void isAllowSubmittingDossiers(long groupId, long userId, long dossierId, String referanceUid)
+			throws PortalException {
+
 	}
 
 	public void hasGetDetailDossier(long groupId, long userId, Dossier dossier, long serviceProcessId)
@@ -47,6 +63,20 @@ public class DossierPermission {
 			boolean isAuthorityEmpoyee = false;
 
 			List<ServiceProcessRole> roles = ServiceProcessRoleLocalServiceUtil.findByS_P_ID(serviceProcessId);
+
+			List<ProcessStep> processSteps = ProcessStepLocalServiceUtil
+					.getProcessStepbyServiceProcessId(serviceProcessId);
+
+			List<ProcessStepRole> processStepRoles = new ArrayList<ProcessStepRole>();
+
+			for (ProcessStep processStep : processSteps) {
+				List<ProcessStepRole> elms = new ArrayList<ProcessStepRole>();
+
+				elms = ProcessStepRoleLocalServiceUtil.findByP_S_ID(processStep.getPrimaryKey());
+
+				processStepRoles.addAll(elms);
+			}
+
 			ok: for (ServiceProcessRole role : roles) {
 				long[] userIds = UserLocalServiceUtil.getRoleUserIds(role.getRoleId());
 
@@ -54,6 +84,17 @@ public class DossierPermission {
 					if (spUid == userId) {
 						isAuthorityEmpoyee = true;
 						break ok;
+					}
+				}
+			}
+
+			ok2: for (ProcessStepRole role : processStepRoles) {
+				long[] userIds = UserLocalServiceUtil.getRoleUserIds(role.getRoleId());
+
+				for (long spUid : userIds) {
+					if (spUid == userId) {
+						isAuthorityEmpoyee = true;
+						break ok2;
 					}
 				}
 			}
@@ -76,9 +117,9 @@ public class DossierPermission {
 			throw new DossierPasswordException("DossierPasswordException");
 		}
 	}
-	
-	public void allowSubmitting(long userId, long dossierid) throws PortalException{
-		//TODO add logic
+
+	public void allowSubmitting(long userId, long dossierid) throws PortalException {
+		// TODO add logic
 	}
 
 	public void hasPermitDoAction(long groupId, long userId, Dossier dossier, long serviceProcessId,
@@ -91,12 +132,13 @@ public class DossierPermission {
 
 		if (!isOwnner) {
 			boolean isAuthorityEmpoyee = false;
-			
-			ProcessStep step = ProcessStepLocalServiceUtil.fetchBySC_GID(action.getPreStepCode(), groupId, serviceProcessId);
-			
+
+			ProcessStep step = ProcessStepLocalServiceUtil.fetchBySC_GID(action.getPreStepCode(), groupId,
+					serviceProcessId);
+
 			if (Validator.isNotNull(step)) {
 				List<ProcessStepRole> roles = ProcessStepRoleLocalServiceUtil.findByP_S_ID(step.getPrimaryKey());
-				
+
 				ok: for (ProcessStepRole role : roles) {
 					long[] userIds = UserLocalServiceUtil.getRoleUserIds(role.getRoleId());
 

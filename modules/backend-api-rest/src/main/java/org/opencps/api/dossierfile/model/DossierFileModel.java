@@ -10,6 +10,7 @@ package org.opencps.api.dossierfile.model;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
 
 
@@ -49,6 +50,7 @@ import javax.xml.bind.annotation.XmlType;
  */
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "DossierFileModel", propOrder = {
+	"dossierFileId",
     "createDate",
     "modifiedDate",
     "referenceUid",
@@ -56,6 +58,7 @@ import javax.xml.bind.annotation.XmlType;
     "dossierPartNo",
     "dossierPartType",
     "fileTemplateNo",
+    "dossierPartName",
     "displayName",
     "fileType",
     "fileSize",
@@ -64,10 +67,14 @@ import javax.xml.bind.annotation.XmlType;
     "signCheck",
     "signInfo",
     "removed",
-    "eForm"
+    "eForm",
+    "formData",
+    "formReport",
+    "formScript"
 })
+@XmlRootElement(name = "DossierFileModel")
 public class DossierFileModel {
-
+	protected Long dossierFileId;
     protected String createDate;
     protected String modifiedDate;
     protected String referenceUid;
@@ -76,6 +83,7 @@ public class DossierFileModel {
     protected Integer dossierPartType;
     protected String fileTemplateNo;
     protected String displayName;
+	protected String dossierPartName;
     protected String fileType;
     protected Long fileSize;
     protected String fileVersion;
@@ -84,6 +92,66 @@ public class DossierFileModel {
     protected String signInfo;
     protected Boolean removed;
     protected Boolean eForm;
+	protected String formData;
+    protected String formReport;
+    protected String formScript;
+    
+    public String getFormScript() {
+		return formScript;
+	}
+
+	public void setFormScript(String formScript) {
+		this.formScript = formScript;
+	}
+    
+    public String getDossierPartName() {
+		return dossierPartName;
+	}
+
+	public void setDossierPartName(String dossierPartName) {
+		this.dossierPartName = dossierPartName;
+	}
+
+
+    /**
+     * Gets the value of the fileSize property.
+     * 
+     * @return
+     *     possible object is
+     *     {@link Long }
+     *     
+     */
+    public Long getDossierFileId() {
+        return dossierFileId;
+    }
+
+    /**
+     * Sets the value of the fileSize property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link Long }
+     *     
+     */
+    public void setDossierFileId(Long value) {
+        this.dossierFileId = value;
+    }
+
+    public String getFormData() {
+		return formData;
+	}
+
+	public void setFormData(String formData) {
+		this.formData = formData;
+	}
+
+	public String getFormReport() {
+		return formReport;
+	}
+
+	public void setFormReport(String formReport) {
+		this.formReport = formReport;
+	}
 
     /**
      * Gets the value of the createDate property.
