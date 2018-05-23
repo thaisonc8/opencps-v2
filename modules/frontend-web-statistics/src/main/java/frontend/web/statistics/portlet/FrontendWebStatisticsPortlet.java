@@ -31,8 +31,9 @@ import org.osgi.service.component.annotations.Component;
 	immediate = true,
 	property = {
 		"com.liferay.portlet.css-class-wrapper=portlet-freemarker",
-		"com.liferay.portlet.display-category=category.statistics",
-		"com.liferay.portlet.header-portlet-css=/css/style.css",
+		"com.liferay.portlet.display-category=category.opencps.statistics",
+		"com.liferay.portlet.header-portlet-css=/css/main.css",
+		"com.liferay.portlet.header-portlet-javascript=/js/charts.js",
 		"com.liferay.portlet.instanceable=true",
 		"javax.portlet.display-name=frontend-web-statistics Portlet",
 		"javax.portlet.init-param.template-path=/",

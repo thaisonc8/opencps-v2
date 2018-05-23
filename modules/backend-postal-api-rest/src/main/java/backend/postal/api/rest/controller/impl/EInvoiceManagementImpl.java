@@ -1,4 +1,4 @@
-package org.opencps.api.controller.impl;
+package backend.postal.api.rest.controller.impl;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -17,17 +17,18 @@ import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.soap.*;
 
-import org.opencps.api.controller.EInvoiceManagement;
 import org.opencps.api.einvoice.model.FsNHGTGT;
 import org.opencps.api.einvoice.model.HoadonCtT;
 import org.opencps.api.einvoice.model.HoadonGtgtCtT;
 import org.opencps.api.einvoice.model.HoadonT;
-import org.opencps.api.einvoice.model.InvoiceInputModel;
+import org.opencps.api.invoice.model.InvoiceInputModel;
 
 import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.util.Validator;
+
+import backend.postal.api.rest.controller.EInvoiceManagement;
 
 public class EInvoiceManagementImpl implements EInvoiceManagement {
 	@Override
@@ -42,11 +43,11 @@ public class EInvoiceManagementImpl implements EInvoiceManagement {
 		HoadonT hoadon = new HoadonT();
 		hoadon.setMa("01GTKT0/001");
 //		hoadon.setNgHd(formatDate(input.getNghd(),"dd/MM/yyyy"));
-		hoadon.setNgHd(input.getNgHd());
+		hoadon.setNgHd(input.getNgayHd());
 		hoadon.setSeri(input.getSeri());
 		hoadon.setMaNthue("01");
 		hoadon.setKieuSo("G");
-		hoadon.setMaKh(input.getMaKh());
+		hoadon.setMaKh(input.getMaKhackHang());
 		hoadon.setTen(input.getTen());
 		hoadon.setPhone(input.getPhone());
 		hoadon.setTax(input.getTax());
@@ -87,14 +88,14 @@ public class EInvoiceManagementImpl implements EInvoiceManagement {
 
 		hoadonCt.getHoadonGtgtCt().addAll(lstHoadonGtgtCt);
 		
-		fsNHGTGT.setBNsd("HA");
-		fsNHGTGT.setBMk("1");
-		fsNHGTGT.setBSoId("1");
+		fsNHGTGT.setBNsd(input.getUserName());
+		fsNHGTGT.setBMk(input.getPassWord());
+		fsNHGTGT.setBSoId(input.getSoid());
 		fsNHGTGT.setHoadonCt(hoadonCt);
 		fsNHGTGT.setHoadon(hoadon);
 		fsNHGTGT.setBKtraDch("");
 
-		String results = "lỗi rồi !!!!!";
+		String results = "khong the ket noi den server HDDT !!!!!";
 
 		try {
 			String soapEndpointUrl = "http://hoadon.cmcsoft.com/Service/iv_v/siv_v_ph_hoadon.asmx";

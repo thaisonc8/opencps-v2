@@ -15,8 +15,8 @@ import org.opencps.api.context.provider1.UserContextProvider;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
+import backend.postal.api.rest.controller.impl.EInvoiceManagementImpl;
 import backend.postal.api.rest.controller.impl.EvaluationManagementImpl;
-import backend.postal.api.rest.controller.impl.VNPostManagementImpl;
 
 /**
  * @author admin
@@ -30,6 +30,7 @@ public class BackendCmcApiRestApplication extends Application {
 		// add REST endpoints (resources)
 		singletons.add(this);
 		singletons.add(new EvaluationManagementImpl());
+		singletons.add(new EInvoiceManagementImpl());
 		
 		// add service provider
 		singletons.add(_serviceContextProvider1);

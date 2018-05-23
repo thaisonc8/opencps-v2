@@ -124,7 +124,13 @@
 			schema: {
 				total: "total",
 				data: "data",
-				model : { id: "dossierTemplateId" }
+				model : { id: "dossierTemplateId" },
+				fields: {
+			        templateName: {
+			          //data type of the field {Number|String|Boolean|Date} default is String
+			          type: "string",
+			        }
+      			}
 			},
 			pageSize: 10,
 			serverPaging: false,

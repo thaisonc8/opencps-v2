@@ -3,7 +3,11 @@
 .headerListView {
 	background-color: #0b72ba !important;
 	color: white !important;
-	text-transform: uppercase;
+	font-weight: 600;
+}
+.custom_canvas{
+	width: 100%;
+	height: 100%;
 }
 </style>
 <div class="row">
@@ -126,10 +130,49 @@
 	<div class="panel-group col-md-4 MB10">
 		<div class="panel panel-default" >
 			<div class="panel-heading headerListView PT10 PR5 PB10 PL15">#:name#</div>
-			<div class="panel-body">Panel Content</div>
+			<div class="panel-body">
+				<div id="canvas-holder" style="width:100%">
+					<canvas id="myChart_#=workingUnitId#" class="custom_canvas"></canvas>
+				</div>
+			</div>
 		</div>
 	</div>
+	#
+		var config = {
+			type: 'pie',
+			data: {
+				datasets: [{
+					data: [10,20,30,25,15],
+					backgroundColor: [
+						window.chartColors.red,
+						window.chartColors.orange,
+						window.chartColors.yellow,
+						window.chartColors.green,
+						window.chartColors.blue,
+					],
+					label: 'Dataset 1'
+				}],
+				labels: [
+					'Red',
+					'Orange',
+					'Yellow',
+					'Green',
+					'Blue'
+				]
+			},
+			options: {
+				responsive: true,
+				tooltips: {
+					enabled: true,
+				}
+			}
+		};
 
+		window.onload = function() {
+			var ctx = "myChart_"+workingUnitId;
+			window.myPie = new Chart(ctx, config);
+		};
+	#
 </script>
 
 <script type="text/x-kendo-template" id="detailWindow">
@@ -137,6 +180,17 @@
 </script>
 
 <script type="text/javascript">
+	$( document ).ready(function() {
+	  	window.chartColors = {
+			red: 'rgb(255, 99, 132)',
+			orange: 'rgb(255, 159, 64)',
+			yellow: 'rgb(255, 205, 86)',
+			green: 'rgb(75, 192, 192)',
+			blue: 'rgb(54, 162, 235)',
+			purple: 'rgb(153, 102, 255)',
+			grey: 'rgb(201, 203, 207)'
+		};
+	});
 
 	var groupFilterdataSource = new kendo.data.DataSource ({
 		transport : {
@@ -204,4 +258,5 @@
 		listView.dataSource.read();	
 	}
 
+	
 </script>
